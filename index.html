@@ -1,1 +1,451 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>B.Y.N - AI Analyzer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; -webkit-tap-highlight-color: transparent; }
+    details > summary { list-style: none; cursor: pointer; }
+    details > summary::-webkit-details-marker { display: none; }
+    .glass-panel { background: rgba(30, 41, 59, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); }
+    .neon-text { text-shadow: 0 0 10px rgba(6, 182, 212, 0.5); }
+    .car-1 { background: #ffffff; color: #000; border: 1px solid #cbd5e1; }
+    .car-2 { background: #000000; color: #fff; border: 1px solid #334155; }
+    .car-3 { background: #dc2626; color: #fff; }
+    .car-4 { background: #2563eb; color: #fff; }
+    .car-5 { background: #eab308; color: #000; }
+    .car-6 { background: #16a34a; color: #fff; }
+    .car-7 { background: #f97316; color: #fff; }
+    .car-8 { background: #ec4899; color: #fff; }
+    .car-9 { background: #9333ea; color: #fff; }
+  </style>
+</head>
+<body class="font-sans pb-40 selection:bg-cyan-500 selection:text-white">
 
+  <div class="max-w-md mx-auto p-4 space-y-5">
+    <header class="text-center pb-4 border-b border-slate-800">
+      <h1 class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-wider">B.Y.N ANALYZER</h1>
+      <p class="text-[10px] text-cyan-500 tracking-[0.2em] mt-1 uppercase">Cross-Site AI Dashboard</p>
+    </header>
+
+    <!-- メインタブ -->
+    <div class="flex bg-slate-900 p-1.5 rounded-xl border border-slate-700 shadow-inner">
+      <button onclick="switchMainTab('parse')" id="tab-parse" class="flex-1 py-3 text-xs font-bold bg-slate-800 rounded-lg shadow-lg text-cyan-400 border border-slate-600 transition-all">データ解析 & AI</button>
+      <button onclick="switchMainTab('dash')" id="tab-dash" class="flex-1 py-3 text-xs font-bold text-slate-500 transition-all">文殊ダッシュボード</button>
+    </div>
+
+    <!-- 解析タブ -->
+    <div id="view-parse" class="space-y-4">
+      
+      <!-- BYN サブタブ -->
+      <div class="flex space-x-2 mt-2">
+        <button onclick="switchSiteTab('B')" id="site-btn-B" class="flex-1 py-2 text-xs font-bold bg-blue-900/50 text-blue-400 border border-blue-500/50 rounded-lg transition-all">B 枠</button>
+        <button onclick="switchSiteTab('Y')" id="site-btn-Y" class="flex-1 py-2 text-xs font-bold bg-slate-800 text-slate-500 border border-slate-700 rounded-lg transition-all">Y 枠</button>
+        <button onclick="switchSiteTab('N')" id="site-btn-N" class="flex-1 py-2 text-xs font-bold bg-slate-800 text-slate-500 border border-slate-700 rounded-lg transition-all">N 枠</button>
+      </div>
+
+      <div class="relative">
+        <textarea id="inputText" oninput="saveCurrentText()" rows="4" class="w-full p-4 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-300 focus:ring-2 focus:ring-cyan-500 focus:outline-none" placeholder="荒れ予想レースのデータをペースト..."></textarea>
+        <button onclick="analyzeAllData()" class="absolute -bottom-4 right-4 bg-gradient-to-r from-cyan-500 to-blue-600 active:from-cyan-400 active:to-blue-500 text-white font-bold py-3 px-6 rounded-full shadow-[0_0_15px_rgba(6,182,212,0.4)] text-xs tracking-wider">
+          解析実行 (EXECUTE)
+        </button>
+      </div>
+      
+      <div id="raceTabsContainer" class="flex flex-wrap gap-2 mt-8"></div>
+
+      <div id="raceContentArea" class="hidden space-y-4 mt-4">
+        <div class="glass-panel p-3 rounded-xl flex flex-col space-y-1">
+          <span class="text-[10px] text-cyan-400 font-bold tracking-widest">LINE PREDICTION</span>
+          <span class="text-sm font-bold text-slate-100 tracking-wider" id="lineInfo"></span>
+        </div>
+        <div id="flagContainer" class="hidden bg-red-950/40 border border-red-500/50 p-3 rounded-xl">
+          <h3 class="text-red-400 font-bold mb-2 text-[10px] tracking-wider flex items-center">
+            <span class="animate-pulse mr-1">🔴</span> ALERT DETECTED
+          </h3>
+          <ul id="flagList" class="text-[11px] text-red-200 space-y-1.5 leading-relaxed"></ul>
+        </div>
+        <div id="playersList" class="space-y-2.5"></div>
+      </div>
+    </div>
+
+     <!-- ダッシュボードタブ -->
+    <div id="view-dash" class="hidden space-y-5">
+      <!-- BYN荒れ予想 比較エリア -->
+      <div class="glass-panel p-4 rounded-xl space-y-3 border-cyan-500/30">
+        <h2 class="font-bold text-xs text-cyan-400 tracking-wider">🏆 BYN 荒れ予想 精度比較</h2>
+        <div id="bynStats" class="space-y-2 text-xs"></div>
+      </div>
+
+      <div class="glass-panel p-4 rounded-xl">
+        <h2 class="font-bold mb-4 text-xs text-cyan-400 tracking-wider">3連単配当トレンド</h2>
+        <div class="relative h-48 w-full"><canvas id="payoutChart"></canvas></div>
+      </div>
+
+      <div class="glass-panel p-4 rounded-xl space-y-3">
+        <h2 class="font-bold text-xs text-cyan-400 tracking-wider">同県先頭の信頼度（ブラックリスト）</h2>
+        <div id="honestyStats" class="text-xs text-slate-300 space-y-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 【右下常駐：スマホ特化 結果入力ドロワー】 -->
+  <div class="fixed bottom-3 right-3 left-3 z-50 max-w-md mx-auto pb-safe">
+    <details id="resultDrawer" class="glass-panel rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] overflow-hidden transition-all group">
+      <summary class="px-5 py-4 flex justify-between items-center cursor-pointer bg-slate-800/90 active:bg-slate-700">
+        <div class="flex items-center space-x-2">
+          <span class="text-cyan-400 text-lg">📝</span>
+          <span class="text-xs font-bold text-slate-100 tracking-wider">結果 ＆ 評価を記録</span>
+        </div>
+        <span class="text-[10px] bg-slate-900 border border-slate-600 px-3 py-1 rounded-full text-slate-300 group-open:text-cyan-400">開閉</span>
+      </summary>
+      
+      <div class="p-5 space-y-5 border-t border-slate-700/50 max-h-[75vh] overflow-y-auto">
+        <div class="flex space-x-3">
+          <div class="flex-1">
+            <label class="text-[10px] text-cyan-500 font-bold block mb-1">RACE ID <span class="text-slate-400 font-normal">(自動で現在の枠に紐付きます)</span></label>
+            <input type="text" id="resRaceName" placeholder="別府 1R" class="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm">
+          </div>
+          <div class="w-24">
+            <label class="text-[10px] text-cyan-500 font-bold block mb-1">車立て</label>
+            <select id="resCarCount" class="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm appearance-none">
+              <option value="7">7車</option><option value="9">9車</option><option value="6">6車</option><option value="1">単騎戦</option>
+            </select>
+          </div>
+        </div>
+        
+        <!-- 着順 -->
+        <div class="flex space-x-3">
+          <div class="flex-1 text-center">
+            <label class="text-[10px] text-yellow-500 font-bold block mb-1">1着</label>
+            <input type="number" inputmode="numeric" pattern="\d*" id="res1" class="w-full p-3 bg-slate-900 border border-slate-600 rounded-lg text-white text-center font-bold text-lg">
+          </div>
+          <div class="flex-1 text-center">
+            <label class="text-[10px] text-slate-300 font-bold block mb-1">2着</label>
+            <input type="number" inputmode="numeric" pattern="\d*" id="res2" class="w-full p-3 bg-slate-900 border border-slate-600 rounded-lg text-white text-center font-bold text-lg">
+          </div>
+          <div class="flex-1 text-center">
+            <label class="text-[10px] text-orange-400 font-bold block mb-1">3着</label>
+            <input type="number" inputmode="numeric" pattern="\d*" id="res3" class="w-full p-3 bg-slate-900 border border-slate-600 rounded-lg text-white text-center font-bold text-lg">
+          </div>
+        </div>
+
+        <div class="flex space-x-3">
+          <div class="flex-1">
+            <label class="text-[10px] text-cyan-500 font-bold block mb-1">2連単 (円)</label>
+            <input type="number" inputmode="numeric" pattern="\d*" id="pay2" class="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm text-right">
+          </div>
+          <div class="flex-1">
+            <label class="text-[10px] text-cyan-500 font-bold block mb-1">3連単 (円)</label>
+            <input type="number" inputmode="numeric" pattern="\d*" id="pay3" class="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm text-right">
+          </div>
+        </div>
+          <!-- 同県先頭の裏切り評価 -->
+        <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-700 space-y-2">
+          <label class="text-[10px] text-red-400 font-bold block">🚨 同県先頭の評価 (裏切りチェック)</label>
+          <div class="flex space-x-2">
+            <input type="number" inputmode="numeric" pattern="\d*" id="leaderCar" placeholder="先頭車番" class="w-20 p-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-center text-sm">
+            <select id="leaderEval" class="flex-1 p-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-[11px] appearance-none">
+              <option value="">-- 評価を選択 --</option>
+              <option value="good">① 共倒れ (頑張った証拠)</option>
+              <option value="normal">② 先頭1着/番手飛 (まぁよし)</option>
+              <option value="bad">③ 先頭3着/番手飛 (最悪/信用不可)</option>
+              <option value="perfect">④ ライン決着 (仕事した)</option>
+            </select>
+          </div>
+        </div>
+
+        <button onclick="saveResultData()" class="w-full bg-gradient-to-r from-cyan-600 to-blue-700 active:scale-95 text-white font-bold py-4 rounded-lg text-sm tracking-widest shadow-lg transition-transform">
+          SAVE TO DATABASE
+        </button>
+      </div>
+    </details>
+  </div>
+
+  <script>
+    let keirinData = JSON.parse(localStorage.getItem('keirinData') || '[]');
+    let honestyData = JSON.parse(localStorage.getItem('honestyData') || '[]');
+    
+    // BYN 3サイト分のテキストと解析結果を保持
+    let currentSite = 'B'; 
+    let siteTexts = JSON.parse(localStorage.getItem('siteTexts') || '{"B":"","Y":"","N":""}');
+    let parsedRaces = { B: {}, Y: {}, N: {} };
+    let chartInstance = null;
+
+    // 初期化
+    document.getElementById('inputText').value = siteTexts[currentSite];
+
+    function switchMainTab(tab) {
+      document.getElementById('view-parse').classList.toggle('hidden', tab !== 'parse');
+      document.getElementById('view-dash').classList.toggle('hidden', tab !== 'dash');
+      const btnParse = document.getElementById('tab-parse');
+      const btnDash = document.getElementById('tab-dash');
+      
+      if (tab === 'parse') {
+        btnParse.className = "flex-1 py-3 text-xs font-bold bg-slate-800 rounded-lg shadow-lg text-cyan-400 border border-slate-600 transition-all";
+        btnDash.className = "flex-1 py-3 text-xs font-bold text-slate-500 transition-all";
+      } else {
+        btnParse.className = "flex-1 py-3 text-xs font-bold text-slate-500 transition-all";
+        btnDash.className = "flex-1 py-3 text-xs font-bold bg-slate-800 rounded-lg shadow-lg text-cyan-400 border border-slate-600 transition-all";
+        renderChart();
+        renderHonestyStats();
+        renderBYNStats();
+      }
+    }
+
+    function switchSiteTab(site) {
+      currentSite = site;
+      // ボタンの見た目切り替え
+      ['B','Y','N'].forEach(s => {
+        const btn = document.getElementById(`site-btn-${s}`);
+        if(s === site) {
+          btn.className = "flex-1 py-2 text-xs font-bold bg-blue-900/50 text-blue-400 border border-blue-500/50 rounded-lg transition-all";
+        } else {
+          btn.className = "flex-1 py-2 text-xs font-bold bg-slate-800 text-slate-500 border border-slate-700 rounded-lg transition-all";
+        }
+      });
+      document.getElementById('inputText').value = siteTexts[currentSite];
+      renderRaceTabs();
+      document.getElementById('raceContentArea').classList.add('hidden');
+    }
+
+    function saveCurrentText() {
+      siteTexts[currentSite] = document.getElementById('inputText').value;
+      localStorage.setItem('siteTexts', JSON.stringify(siteTexts));
+    }
+
+    function analyzeAllData() {
+      const rawText = siteTexts[currentSite];
+      if(!rawText) return alert(`${currentSite}枠のデータがありません。`);
+
+      parsedRaces[currentSite] = {};
+      const sections = rawText.split(/={30,}/).filter(s => s.trim() !== '');
+      let currentRaceNum = null;
+      let currentRaceText = "";
+
+      sections.forEach(section => {
+        const raceMatch = section.match(/（.+?\s(\d+)R）/);
+        if (raceMatch) {
+          if (currentRaceNum) processSingleRace(currentRaceNum, currentRaceText);
+          currentRaceNum = raceMatch[1];
+          currentRaceText = section;
+        } else {
+          if (currentRaceNum) currentRaceText += "\n" + section;
+        }
+      });
+      if (currentRaceNum) processSingleRace(currentRaceNum, currentRaceText);
+      renderRaceTabs();
+      alert(`${currentSite}枠のデータを解析しました！`);
+    }
+
+    function processSingleRace(raceNum, text) {
+      const players = [];
+      const flags = [];
+      const lineMatch = text.match(/並び予想:\s*([^※\n]+)/);
+      const lineInfo = lineMatch ? lineMatch[1].trim() : "NO DATA";
+      const blocks = text.split(/\[\d+\]/).slice(1);
+      
+      blocks.forEach((block) => {
+        if (!block.includes("競走得点")) return;
+        const carNo = players.length + 1; 
+        const nameMatch = block.match(/(.+?)｜/);
+        const prefMatch = block.match(/｜([^\sA-Za-z]+)\s+[A-Z]\d/);
+        const scoreMatch = block.match(/競走得点:([\d\.]+)/);
+        const hbMatch = block.match(/H:(\d+) \/ B:(\d+)/);
+        const aiStampMatch = block.match(/AI印:([^\s/]+)/);
+
+        if (nameMatch && scoreMatch && hbMatch) {
+          const name = nameMatch[1].trim();
+          const pref = prefMatch ? prefMatch[1].trim() : "";
+          const score = parseFloat(scoreMatch[1]);
+          const h = parseInt(hbMatch[1]);
+          const b = parseInt(hbMatch[2]);
+          const aiStamp = aiStampMatch ? aiStampMatch[1].trim() : "無";
+          const aiScore = (score + (h + b) * 0.5).toFixed(2);
+          
+          players.push({ carNo, name, pref, aiScore, h, b, aiStamp });
+
+          if ((aiStamp === '無' || aiStamp === '連下') && aiScore >= 85) {
+            flags.push(`【${carNo}番 ${name}】元AI無印ですが、独自AIスコア上位！穴警戒。`);
+          }
+        }
+      });
+      parsedRaces[currentSite][raceNum] = { lineInfo, players, flags };
+    }
+    function renderRaceTabs() {
+      const container = document.getElementById('raceTabsContainer');
+      container.innerHTML = '';
+      const races = parsedRaces[currentSite];
+      const raceNums = Object.keys(races).sort((a,b) => parseInt(a) - parseInt(b));
+      
+      if(raceNums.length === 0) return;
+
+      raceNums.forEach(num => {
+        const btn = document.createElement('button');
+        btn.innerText = `RACE ${num}`;
+        btn.className = "px-4 py-2 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-lg text-xs focus:ring-2 focus:ring-cyan-500 focus:text-cyan-400";
+        btn.onclick = () => showRace(num);
+        container.appendChild(btn);
+      });
+      showRace(raceNums[0]);
+    }
+
+    function showRace(raceNum) {
+      const race = parsedRaces[currentSite][raceNum];
+      if (!race) return;
+      document.getElementById('lineInfo').innerText = race.lineInfo;
+
+      const pList = document.getElementById('playersList');
+      pList.innerHTML = race.players.sort((a,b) => b.aiScore - a.aiScore).map(p => `
+        <div class="glass-panel p-3 rounded-xl flex justify-between items-center">
+          <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-full flex items-center justify-center font-black text-base car-${p.carNo} shadow-sm">${p.carNo}</div>
+            <div>
+              <div class="flex items-baseline space-x-2">
+                <span class="font-bold text-slate-100 text-base">${p.name}</span>
+                <span class="text-[10px] text-slate-400">${p.pref}</span>
+              </div>
+              <div class="flex items-center space-x-2 mt-1">
+                <span class="px-2 py-0.5 bg-slate-800 border border-slate-600 text-slate-300 rounded text-[10px]">印:${p.aiStamp}</span>
+                <span class="text-[10px] text-slate-500">H:${p.h} B:${p.b}</span>
+              </div>
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="text-[9px] text-cyan-500 font-bold tracking-widest mb-0.5">SCORE</div>
+            <div class="text-xl font-black text-cyan-400 neon-text">${p.aiScore}</div>
+          </div>
+        </div>
+      `).join('');
+
+      const fContainer = document.getElementById('flagContainer');
+      const fList = document.getElementById('flagList');
+      if (race.flags.length > 0) {
+        fContainer.classList.remove('hidden');
+        fList.innerHTML = race.flags.map(f => `<li>${f}</li>`).join('');
+      } else {
+        fContainer.classList.add('hidden');
+      }
+      document.getElementById('raceContentArea').classList.remove('hidden');
+    }
+
+    function saveResultData() {
+      const raceName = document.getElementById('resRaceName').value || '不明R';
+      const r1 = document.getElementById('res1').value;
+      const r2 = document.getElementById('res2').value;
+      const r3 = document.getElementById('res3').value;
+      const pay3 = parseInt(document.getElementById('pay3').value) || 0;
+      
+      const lCar = document.getElementById('leaderCar').value;
+      const lEval = document.getElementById('leaderEval').value;
+
+      if (!r1 || !r2 || !r3) return alert('着順を入力してください');
+
+      // 現在開いているタブ(currentSite)を自動的に荒れ予想サイトとして紐付け
+      const bynTargets = [currentSite];
+
+      // レース結果保存
+      keirinData.push({ 
+        raceName, 
+        pay3, 
+        isMansha: pay3 >= 10000,
+        bynTargets 
+      });
+      localStorage.setItem('keirinData', JSON.stringify(keirinData));
+
+      // 同県評価保存
+      if (lCar && lEval) {
+        honestyData.push({ raceName, car: lCar, eval: lEval });
+        localStorage.setItem('honestyData', JSON.stringify(honestyData));
+      }
+      
+      ['res1','res2','res3','pay2','pay3','leaderCar'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('leaderEval').value = '';
+      document.getElementById('resultDrawer').open = false;
+      alert(`DATABASE UPDATED! (${currentSite}枠のデータとして保存しました)`);
+    }
+
+    function renderBYNStats() {
+      const div = document.getElementById('bynStats');
+      if(keirinData.length === 0) return div.innerHTML = '<p class="text-slate-500">データがありません。</p>';
+
+      const stats = { B: { count: 0, mansha: 0 }, Y: { count: 0, mansha: 0 }, N: { count: 0, mansha: 0 } };
+      
+      keirinData.forEach(d => {
+        if(d.bynTargets && d.bynTargets.length > 0) {
+          d.bynTargets.forEach(site => {
+            if(stats[site]) {
+              stats[site].count++;
+              if(d.isMansha) stats[site].mansha++;
+            }
+          });
+        }
+      });
+
+      div.innerHTML = ['B', 'Y', 'N'].map(site => {
+        const s = stats[site];
+        const rate = s.count > 0 ? Math.round((s.mansha / s.count) * 100) : 0;
+        return `
+          <div class="flex justify-between items-center bg-slate-800/50 p-2 rounded border border-slate-700">
+            <div class="flex items-center space-x-2">
+              <span class="w-6 h-6 rounded flex items-center justify-center font-bold text-xs bg-slate-700 text-cyan-400">${site}</span>
+              <span class="text-[10px] text-slate-300">荒れ予想数: ${s.count}回</span>
+            </div>
+            <div class="text-right">
+              <div class="text-[9px] text-slate-400 mb-0.5">万車券的中</div>
+              <div class="text-sm font-bold ${rate > 0 ? 'text-red-400' : 'text-slate-500'}">${s.mansha}回 <span class="text-[9px]">(${rate}%)</span></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderChart() {
+      const ctx = document.getElementById('payoutChart');
+      if(chartInstance) chartInstance.destroy();
+      const labels = keirinData.map((d, i) => d.raceName || (i+1+'R'));
+      const data = keirinData.map(d => d.pay3);
+      const pointColors = keirinData.map(d => d.isMansha ? '#ef4444' : '#06b6d4');
+
+      Chart.defaults.color = '#94a3b8';
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets: [{ label: '3連単配当(円)', data, borderColor: '#334155', pointBackgroundColor: pointColors, pointRadius: 4, borderWidth: 2, stepped: true }] },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } }
+      });
+    }
+
+    function renderHonestyStats() {
+      const div = document.getElementById('honestyStats');
+      if (honestyData.length === 0) {
+        div.innerHTML = '<p class="text-slate-500">評価履歴はありません。</p>';
+        return;
+      }
+      
+      const counts = honestyData.reduce((acc, curr) => {
+        if(!acc[curr.car]) acc[curr.car] = { good:0, normal:0, bad:0, perfect:0, total:0 };
+        acc[curr.car][curr.eval]++;
+        acc[curr.car].total++;
+        return acc;
+      }, {});
+
+      div.innerHTML = Object.entries(counts).map(([car, stat]) => `
+        <div class="bg-slate-800/50 p-2.5 rounded border border-slate-700 flex justify-between items-center">
+          <div class="flex items-center space-x-2">
+            <span class="w-6 h-6 rounded-full flex justify-center items-center font-bold text-xs car-${car}">${car}</span>
+            <span class="text-[10px] text-slate-300">先頭実績 (計${stat.total}回)</span>
+          </div>
+          <div class="flex space-x-1 text-[9px] font-mono">
+            <span class="bg-blue-900/50 text-blue-300 px-1.5 py-0.5 rounded border border-blue-800" title="ライン決着">決:${stat.perfect}</span>
+            <span class="bg-green-900/50 text-green-300 px-1.5 py-0.5 rounded border border-green-800" title="共倒れ">共:${stat.good}</span>
+            <span class="bg-yellow-900/50 text-yellow-300 px-1.5 py-0.5 rounded border border-yellow-800" title="先頭1着/番手飛">独:${stat.normal}</span>
+            <span class="bg-red-900/50 text-red-300 px-1.5 py-0.5 rounded border border-red-800" title="先頭3着/番手飛">最悪:${stat.bad}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+  </script>
+</body>
+</html>
