@@ -63,7 +63,7 @@
         <div id="raceTabsContainer" class="flex flex-wrap gap-2"></div>
       </div>
 
-      <div id="raceContentArea" class="hidden space-y-4 mt-2 border-t border-slate-800 pt-4">
+       <div id="raceContentArea" class="hidden space-y-4 mt-2 border-t border-slate-800 pt-4">
         <div class="glass-panel p-3 rounded-xl flex flex-col space-y-1 relative">
           <button onclick="removePendingRace()" class="absolute top-2 right-2 text-slate-500 hover:text-red-400 text-[10px] bg-slate-900 px-2 py-1 rounded border border-slate-700">ストック破棄</button>
           <span class="text-[10px] text-cyan-400 font-bold tracking-widest flex items-center">
@@ -82,7 +82,7 @@
       </div>
     </div>
 
-     <!-- 🌟 ダッシュボードタブ -->
+    <!-- 🌟 ダッシュボードタブ -->
     <div id="view-dash" class="hidden space-y-5">
       <div class="glass-panel p-4 rounded-xl space-y-3 border-cyan-500/30">
         <h2 class="font-bold text-xs text-cyan-400 tracking-wider">🏆 サイト別 荒れ予想＆印レポート</h2>
@@ -116,7 +116,7 @@
     </div>
   </div>
 
-   <!-- 📝 右下常駐：結果入力ドロワー -->
+  <!-- 📝 右下常駐：結果入力ドロワー -->
   <div class="fixed bottom-3 right-3 left-3 z-50 max-w-md mx-auto pb-safe">
     <details id="resultDrawer" class="glass-panel rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] overflow-hidden transition-all group">
       <summary class="px-5 py-4 flex justify-between items-center cursor-pointer bg-slate-800/90 active:bg-slate-700 border-t border-slate-700">
@@ -129,7 +129,7 @@
       
       <div class="p-5 space-y-4 border-t border-slate-700/50 max-h-[75vh] overflow-y-auto">
         <div class="bg-blue-900/30 border border-blue-500/30 p-2 rounded text-[10px] text-blue-300 flex items-center">
-          ℹ️ 現在開いている【 <span id="targetRaceDisplay" class="font-bold text-white mx-1">未選択</span> 】のデータを消化し、統計へ送ります。
+          ℹ️ 【 <span id="targetRaceDisplay" class="font-bold text-white mx-1">未選択</span> 】と同条件の全サイトのデータを一括消化し、統計へ送ります。
         </div>
 
         <div class="flex space-x-3">
@@ -173,13 +173,13 @@
         </div>
 
         <button onclick="consumeResultData()" class="w-full bg-gradient-to-r from-cyan-600 to-blue-700 active:scale-95 text-white font-bold py-3.5 rounded-lg text-sm tracking-widest shadow-lg transition-transform">
-          SAVE & CONSUME (消化)
+          SAVE & CONSUME (一括消化)
         </button>
       </div>
     </details>
   </div>
 
-  <script>
+   <script>
     let pendingRaces = JSON.parse(localStorage.getItem('pendingRaces') || '[]'); 
     let db = JSON.parse(localStorage.getItem('bynDB') || '[]'); 
     let honestyDB = JSON.parse(localStorage.getItem('honestyDB') || '[]'); 
@@ -245,6 +245,7 @@
         }
       });
       if (tempRaceNum) { processAndStoreRace(tempRaceNum, tempText, defaultPlace); addedCount++; }
+
       if(addedCount > 0) {
         document.getElementById('inputText').value = ''; 
         renderPendingTabs();
@@ -254,14 +255,13 @@
       }
     }
 
-    function processAndStoreRace(raceNum, text, defaultPlace) {
+     function processAndStoreRace(raceNum, text, defaultPlace) {
       const players = [];
       const flags = [];
       
       const pMatch = text.match(/（\s*([^\s0-9]+)\s+\d+R\s*）/);
       const place = pMatch ? pMatch[1] : defaultPlace;
 
-      // 🌸 ガールズケイリン（L級）判定
       const isGirls = text.includes('ガールズ') || text.includes('L級') || text.includes('L1');
 
       const lineMatch = text.match(/並び予想:\s*([^※\n]+)/);
@@ -292,9 +292,9 @@
             });
           }
         });
-    }
+      }
 
-    const rawPlayers = [];
+      const rawPlayers = [];
       const blocks = text.split(/\[\d+\]/).slice(1);
       blocks.forEach((block) => {
         if (!block.includes("競走得点")) return;
@@ -310,7 +310,6 @@
           const stamp = normalizeStamp(aiM ? aiM[1] : "");
           const aiScore = (parseFloat(scrM[1]) + (parseInt(hbM[1]) + parseInt(hbM[2])) * 0.5).toFixed(2);
           
-          // ガールズは全員単騎扱い
           const posInfo = isGirls 
             ? { lIdx: null, isTanki: true, pos: '単騎', fCar: null }
             : (lineMap[carNo] || { lIdx: null, isTanki: true, pos: '単騎', fCar: null });
@@ -319,7 +318,6 @@
         }
       });
 
-      // 💡 無印 発生ポジション判定ロジック (ガールズ戦ではライン非依存の「無」のまま保持)
       rawPlayers.forEach(p => {
         let finalStamp = p.stamp;
         
@@ -330,7 +328,6 @@
           const adjacentStamps = [];
           if (beforeP) adjacentStamps.push(beforeP.stamp);
           if (afterP) adjacentStamps.push(afterP.stamp);
-
           if (adjacentStamps.includes('◎')) {
             finalStamp = '⑳';
           } else if (adjacentStamps.includes('○')) {
@@ -351,8 +348,8 @@
             }
           }
         }
-
-                         players.push({ ...p, stamp: finalStamp });
+        
+        players.push({ ...p, stamp: finalStamp });
 
         if (['☆','★','⑳','●','▲','✖','△'].includes(finalStamp) && p.aiScore >= 85) {
           flags.push(`【${p.carNo}番 ${p.name} (${finalStamp})】元AI低評価だが独自AIスコア上位！`);
@@ -405,7 +402,7 @@
       }
     }
 
-    function showRace(id) {
+     function showRace(id) {
       currentSelectedRaceId = id;
       const race = pendingRaces.find(r => r.id === id);
       if (!race) return;
@@ -466,6 +463,7 @@
       }
     }
 
+    // 💡 複数サイト分を一括で消化するロジック
     function consumeResultData() {
       if(!currentSelectedRaceId) return alert('対象のレースを選択してください。');
       
@@ -476,32 +474,48 @@
       
       if (!r1 || !r2 || !r3) return alert('着順を入力してください');
 
-      const raceData = pendingRaces.find(r => r.id === currentSelectedRaceId);
-      const newId = Date.now();
+      const baseRace = pendingRaces.find(r => r.id === currentSelectedRaceId);
+      const basePlace = baseRace.place;
+      const baseRaceNum = baseRace.raceNum;
 
-      db.unshift({ 
-        id: newId, site: raceData.site, place: raceData.place || '', raceNum: raceData.raceNum,
-        r1, r2, r3, pay3, isMansha: pay3 >= 10000, players: raceData.players 
+      // 現在ストックされている中から、同じ開催地・同じレース番号のものを全て抽出（例：B枠、Y枠、N枠の岐阜3R）
+      const targetRaces = pendingRaces.filter(r => r.place === basePlace && r.raceNum === baseRaceNum);
+      
+      const baseTime = Date.now();
+      let addedSites = [];
+
+      // 該当する全サイトのデータを一括で統計に追加
+      targetRaces.forEach((raceData, index) => {
+        const newId = baseTime + index; // IDが重複しないようにズラす
+        db.unshift({ 
+          id: newId, site: raceData.site, place: raceData.place || '', raceNum: raceData.raceNum,
+          r1, r2, r3, pay3, isMansha: pay3 >= 10000, players: raceData.players 
+        });
+        addedSites.push(raceData.site);
       });
       localStorage.setItem('bynDB', JSON.stringify(db));
 
+      // 同県先頭の評価は「レース自体に対する評価」なので、3サイト同時に消化しても1回分だけ記録する
       const lCar = document.getElementById('leaderCar').value;
       const lEval = document.getElementById('leaderEval').value;
       if (lCar && lEval) {
-        honestyDB.unshift({ id: newId, car: parseInt(lCar), eval: lEval });
+        honestyDB.unshift({ id: baseTime, car: parseInt(lCar), eval: lEval });
         localStorage.setItem('honestyDB', JSON.stringify(honestyDB));
       }
 
-      pendingRaces = pendingRaces.filter(r => r.id !== currentSelectedRaceId);
+      // 消化完了したレースをすべてストックから一括削除
+      pendingRaces = pendingRaces.filter(r => !(r.place === basePlace && r.raceNum === baseRaceNum));
       localStorage.setItem('pendingRaces', JSON.stringify(pendingRaces));
       currentSelectedRaceId = null;
       
+      // フォームのクリア
       ['res1','res2','res3','pay2','pay3','leaderCar'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('leaderEval').value = '';
       document.getElementById('resultDrawer').open = false;
       
-      const pName = raceData.place ? `${raceData.place} ` : '';
-      alert(`[ ${raceData.site}枠-${pName}${raceData.raceNum}R ] を消化し、統計に蓄積しました！`);
+      const pName = basePlace ? `${basePlace} ` : '';
+      const sitesStr = addedSites.join(', ');
+      alert(`[ ${pName}${baseRaceNum}R ] を ${sitesStr}枠まとめて消化し、統計に蓄積しました！`);
       renderPendingTabs();
     }
 
@@ -534,7 +548,7 @@
       URL.revokeObjectURL(url);
     }
 
-    function importData(event) {
+     function importData(event) {
       const file = event.target.files[0];
       if (!file) return;
       const reader = new FileReader();
@@ -578,7 +592,7 @@
           </div>
         `;
       }).join('');
-          }
+    }
 
     function renderBYNStats() {
       const div = document.getElementById('bynStats');
@@ -598,7 +612,7 @@
         }
       });
 
-      div.innerHTML = ['B','Y','N'].map(s => {
+     div.innerHTML = ['B','Y','N'].map(s => {
         const st = stats[s];
         const mRate = st.total ? Math.round((st.mansha/st.total)*100) : 0;
         const fRate = st.total ? Math.round((st.honmeiFly/st.total)*100) : 0;
@@ -647,9 +661,9 @@
             `;
           }
         });
-      });
-      div.innerHTML = count > 0 ? html : '<p class="text-slate-500 p-2">まだ穴馬（☆★⑳●▲✖）のデータがありません。</p>';
-              }
+      });　
+     div.innerHTML = count > 0 ? html : '<p class="text-slate-500 p-2">まだ穴馬（☆★⑳●▲✖）のデータがありません。</p>';
+    }
 
     function renderChart() {
       const ctx = document.getElementById('payoutChart');
