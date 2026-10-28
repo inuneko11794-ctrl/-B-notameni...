@@ -57,7 +57,7 @@
         </div>
       </div>
 
-       <!-- 発走待ちリスト -->
+      <!-- 発走待ちリスト -->
       <div class="pt-4">
         <h3 class="text-[10px] text-slate-400 font-bold tracking-widest mb-2 flex items-center">
           <span>⏳ 発走待ちリスト (未結果)</span>
@@ -93,7 +93,7 @@
       </div>
       <div class="glass-panel p-4 rounded-xl space-y-3 border-yellow-500/30">
         <h2 class="font-bold text-xs text-yellow-400 tracking-wider flex items-center">
-          <span>💣 無印・穴馬の発生ポジション</span>
+          <span>💣 無印・穴馬の発生ポジション (☆★分析)</span>
           <span class="ml-auto text-[9px] bg-slate-800 px-2 py-0.5 rounded border border-slate-700">直近の傾向</span>
         </h2>
         <div id="mujirushiStats" class="text-[10px] text-slate-300 space-y-2 max-h-48 overflow-y-auto pr-1"></div>
@@ -111,7 +111,7 @@
         <div id="historyList" class="text-[10px] space-y-2 max-h-32 overflow-y-auto"></div>
       </div>
       
-      <!-- 💾 データバックアップ＆復元パネル (新規追加) -->
+      <!-- 💾 データバックアップ＆復元パネル -->
       <div class="glass-panel p-4 rounded-xl space-y-3 border-purple-500/30">
         <h2 class="font-bold text-xs text-purple-400 tracking-wider flex items-center">
           <span>💾 データ バックアップ ＆ 復元</span>
@@ -124,7 +124,6 @@
           <button onclick="document.getElementById('importFile').click()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-lg border border-slate-600 text-xs transition-colors active:scale-95">
             📥 読込 (Load)
           </button>
-          <!-- 隠しファイルインプット -->
           <input type="file" id="importFile" accept=".json" class="hidden" onchange="importData(event)">
         </div>
       </div>
@@ -195,7 +194,6 @@
   </div>
 
    <script>
-    // データベース群
     let pendingRaces = JSON.parse(localStorage.getItem('pendingRaces') || '[]'); 
     let db = JSON.parse(localStorage.getItem('bynDB') || '[]'); 
     let honestyDB = JSON.parse(localStorage.getItem('honestyDB') || '[]'); 
@@ -204,7 +202,6 @@
     let currentSelectedRaceId = null; 
     let chartInstance = null;
 
-    // 初期化
     renderPendingTabs();
 
     function switchMainTab(tab) {
@@ -229,6 +226,17 @@
           ? `px-3 py-1 text-[10px] font-bold bg-blue-900 text-blue-300 rounded border border-blue-500 transition-all`
           : `px-3 py-1 text-[10px] font-bold bg-slate-800 text-slate-500 rounded border border-slate-700 transition-all`;
       });
+    }
+
+    // 印の完全正規化関数 (◎◯△☓)
+    function normalizeStamp(rawStamp) {
+      if (!rawStamp) return '無';
+      const s = rawStamp.trim();
+      if (s.includes('本命') || s === '◎') return '◎';
+      if (s.includes('対抗') || s === '○' || s === '◯') return '○';
+      if (s.includes('連下') || s === '△') return '△';
+      if (s.includes('穴') || s === '単穴' || s === '×' || s === '☓' || s === '▲') return '☓';
+      return '無';
     }
 
     // ストック＆解析 (EXECUTE)
@@ -266,22 +274,46 @@
       const lineMatch = text.match(/並び予想:\s*([^※\n]+)/);
       const lineInfo = lineMatch ? lineMatch[1].trim() : "";
       
+      // 単騎を完全にラインから除外して解析するロジック
       const lineMap = {}; 
       const lineStrs = lineInfo.match(/\[([0-9\s]+)\]/g);
+      
+      let actualLineCount = 0;
       if (lineStrs) {
-        lineStrs.forEach((str, lIdx) => {
+        lineStrs.forEach((str) => {
           const cars = str.replace(/[\[\]]/g, '').trim().split(/\s+/).map(Number);
-          const isTanki = cars.length === 1;
-          cars.forEach((cNo, pIdx) => {
-            lineMap[cNo] = { lIdx: lIdx + 1, isTanki, pos: isTanki ? '単騎' : (pIdx === 0 ? '先頭' : '番手以降'), fCar: pIdx > 0 ? cars[pIdx - 1] : null };
-          });
+          const isTanki = cars.length === 1; // 1人だけの塊は「単騎」＝ラインに含めない
+          
+          if (!isTanki) {
+            actualLineCount++;
+            cars.forEach((cNo, pIdx) => {
+              lineMap[cNo] = {
+                lIdx: actualLineCount, // 本物のライン番号のみカウント
+                isTanki: false,
+                pos: pIdx === 0 ? '先頭' : '番手以降',
+                fCar: pIdx > 0 ? cars[pIdx - 1] : null
+              };
+            });
+          } else {
+            // 単騎の車番はライン非所属として登録
+            cars.forEach((cNo) => {
+              lineMap[cNo] = {
+                lIdx: null,
+                isTanki: true,
+                pos: '単騎',
+                fCar: null
+              };
+            });
+          }
         });
       }
 
+      // プレイヤーデータを抽出
+      const rawPlayers = [];
       const blocks = text.split(/\[\d+\]/).slice(1);
       blocks.forEach((block) => {
         if (!block.includes("競走得点")) return;
-        const carNo = players.length + 1; 
+        const carNo = rawPlayers.length + 1; 
         const nameM = block.match(/(.+?)｜/);
         const prefM = block.match(/｜([^\sA-Za-z]+)\s+[A-Z]\d/);
         const scrM = block.match(/競走得点:([\d\.]+)/);
@@ -290,12 +322,29 @@
 
         if (nameM && scrM && hbM) {
           const name = nameM[1].trim();
-          const stamp = aiM ? aiM[1].trim() : "無";
+          const stamp = normalizeStamp(aiM ? aiM[1] : "");
           const aiScore = (parseFloat(scrM[1]) + (parseInt(hbM[1]) + parseInt(hbM[2])) * 0.5).toFixed(2);
-          const posInfo = lineMap[carNo] || { lIdx:0, isTanki:true, pos:'不明', fCar:null };
+          const posInfo = lineMap[carNo] || { lIdx: null, isTanki: true, pos: '単騎', fCar: null };
           
-          players.push({ carNo, name, pref: prefM?prefM[1].trim():"", aiScore, stamp, ...posInfo });
-          if ((stamp === '無' || stamp === '連下') && aiScore >= 85) flags.push(`【${carNo}番 ${name}】元AI低評価だが独自AIスコア上位！`);
+          rawPlayers.push({ carNo, name, pref: prefM?prefM[1].trim():"", aiScore, stamp, ...posInfo });
+        }
+      });
+
+      // 無印の特殊判定 (☆:単騎または自力の無印, ★:番手以降の無印)
+      rawPlayers.forEach(p => {
+        let finalStamp = p.stamp;
+        if (finalStamp === '無') {
+          if (p.isTanki || p.pos === '先頭') {
+            finalStamp = '☆'; // 単騎、または自力先頭の無印
+          } else if (p.pos === '番手以降') {
+            finalStamp = '★'; // 番手以降の無印（無印+無印コンビ含む）
+          }
+        }
+        
+        players.push({ ...p, stamp: finalStamp });
+
+        if ((finalStamp === '☆' || finalStamp === '★' || finalStamp === '△') && p.aiScore >= 85) {
+          flags.push(`【${p.carNo}番 ${p.name} (${finalStamp})】元AI低評価だが独自AIスコア上位！`);
         }
       });
 
@@ -326,7 +375,7 @@
         return parseInt(a.raceNum) - parseInt(b.raceNum);
       });
 
-     sorted.forEach(race => {
+      sorted.forEach(race => {
         const btn = document.createElement('button');
         btn.innerText = `[${race.site}] ${race.raceNum}R`;
         const isSelected = currentSelectedRaceId === race.id;
@@ -344,7 +393,7 @@
       }
     }
 
-    function showRace(id) {
+     function showRace(id) {
       currentSelectedRaceId = id;
       const race = pendingRaces.find(r => r.id === id);
       if (!race) return;
@@ -359,7 +408,7 @@
             <div>
               <div class="font-bold text-slate-100 text-sm">${p.name} <span class="text-[9px] font-normal text-slate-400">(${p.pref})</span></div>
               <div class="text-[9px] text-slate-400 mt-0.5">
-                <span class="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-slate-200 mr-1">印: ${p.stamp}</span>
+                <span class="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-yellow-400 font-bold mr-1">印: ${p.stamp}</span>
                 ${p.isTanki ? '単騎' : `第${p.lIdx}L ${p.pos}`}
               </div>
             </div>
@@ -385,7 +434,7 @@
 
     function removePendingRace() {
       if(!currentSelectedRaceId) return;
-      if(confirm('このストックを破棄しますか？(入力前のデータ削除)')) {
+      if(confirm('このストックを破棄しますか？')) {
         pendingRaces = pendingRaces.filter(r => r.id !== currentSelectedRaceId);
         localStorage.setItem('pendingRaces', JSON.stringify(pendingRaces));
         currentSelectedRaceId = null;
@@ -403,7 +452,6 @@
       }
     }
 
-    // 保存＆消化ロジック (CONSUME)
     function consumeResultData() {
       if(!currentSelectedRaceId) return alert('対象のレースを選択してください。');
       
@@ -452,10 +500,7 @@
       }
     }
 
-      // ----------------------------------------------------
-    // データ管理 (バックアップ＆復元)
-    // ----------------------------------------------------
-    function exportData() {
+     function exportData() {
       const backupObj = {
         bynDB: localStorage.getItem('bynDB') || '[]',
         honestyDB: localStorage.getItem('honestyDB') || '[]',
@@ -464,14 +509,10 @@
       const jsonStr = JSON.stringify(backupObj);
       const blob = new Blob([jsonStr], { type: "application/json" });
       const url = URL.createObjectURL(blob);
-      
-      // yyyymmdd形式のファイル名を作成
       const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-      const fileName = `byn_analyzer_backup_${date}.json`;
-
       const a = document.createElement("a");
       a.href = url;
-      a.download = fileName;
+      a.download = `byn_analyzer_backup_${date}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -481,37 +522,34 @@
     function importData(event) {
       const file = event.target.files[0];
       if (!file) return;
-
       const reader = new FileReader();
       reader.onload = function(e) {
         try {
           const data = JSON.parse(e.target.result);
-          if (confirm('現在のデータは上書きされ、バックアップ状態に戻ります。\nよろしいですか？')) {
+          if (confirm('現在のデータは上書きされ、バックアップ状態に戻ります。よろしいですか？')) {
             if (data.bynDB) localStorage.setItem('bynDB', data.bynDB);
             if (data.honestyDB) localStorage.setItem('honestyDB', data.honestyDB);
             if (data.pendingRaces) localStorage.setItem('pendingRaces', data.pendingRaces);
-            
-            alert('データの復元が完了しました！アプリを再起動します。');
-            location.reload(); // リロードして画面に反映
+            alert('データの復元が完了しました！再読み込みします。');
+            location.reload();
           }
         } catch (err) {
-          alert('ファイルの読み込みに失敗しました。正しいバックアップファイルを選択してください。');
+          alert('ファイルの読み込みに失敗しました。');
         }
-        event.target.value = ''; // 連続で同じファイルを読めるようにリセット
+        event.target.value = '';
       };
       reader.readAsText(file);
     }
 
-    // ----- ダッシュボード群 -----
     function renderAllDashboards() {
       renderBYNStats();
       renderMujirushiStats();
       renderChart();
       renderHonestyStats();
       renderHistoryList();
-    }
 
-    function renderHistoryList() {
+
+     function renderHistoryList() {
       const div = document.getElementById('historyList');
       if(db.length === 0) return div.innerHTML = '<p class="text-slate-500">保存履歴なし</p>';
       
@@ -532,10 +570,12 @@
         if(stats[d.site]) {
           stats[d.site].total++;
           if(d.isMansha) stats[d.site].mansha++;
-          const honmeiP = d.players.find(p => p.stamp === '本命' || p.stamp === '◎' || p.stamp.includes('◎') || p.stamp.includes('本命'));
+          const honmeiP = d.players.find(p => p.stamp === '◎');
           if(honmeiP) {
             const hCar = Number(honmeiP.carNo);
-            if (Number(d.r1) !== hCar && Number(d.r2) !== hCar && Number(d.r3) !== hCar) stats[d.site].honmeiFly++;
+            if (Number(d.r1) !== hCar && Number(d.r2) !== hCar && Number(d.r3) !== hCar) {
+              stats[d.site].honmeiFly++;
+            }
           }
         }
       });
@@ -561,16 +601,22 @@
       db.forEach(d => {
         [d.r1, d.r2, d.r3].forEach((resCar, idx) => {
           const p = d.players.find(x => x.carNo === resCar);
-          if(p && p.stamp === '無') {
+          if(p && (p.stamp === '☆' || p.stamp === '★' || p.stamp === '無')) {
             count++;
             const rank = idx + 1;
             const rankColor = rank === 1 ? 'text-yellow-500' : (rank === 2 ? 'text-slate-300' : 'text-orange-400');
             const posDesc = p.isTanki ? '単騎' : `第${p.lIdx}Lの${p.pos}`;
+            
             let frontStamp = "-";
             if(p.fCar) { const fp = d.players.find(x => x.carNo === p.fCar); if(fp) frontStamp = fp.stamp; }
+            
             html += `
               <div class="bg-slate-800/30 p-2 border-l-2 border-yellow-500 mb-1 flex justify-between items-center">
-                <div><span class="font-bold ${rankColor} mr-1">${rank}着</span><span class="text-slate-300">${d.site}枠 ${d.raceNum}R</span></div>
+                <div>
+                  <span class="font-bold ${rankColor} mr-1">${rank}着</span>
+                  <span class="text-slate-300">${d.site}枠 ${d.raceNum}R</span>
+                  <span class="ml-1 px-1 bg-slate-900 text-yellow-400 rounded text-[9px]">${p.stamp}</span>
+                </div>
                 <div class="text-right text-[9px]">
                   <span class="bg-slate-900 px-1 py-0.5 rounded text-yellow-300">${posDesc}</span>
                   ${p.fCar ? `<br><span class="text-slate-500">前の印: ${frontStamp}</span>` : ''}
@@ -580,10 +626,10 @@
           }
         });
       });
-      div.innerHTML = count > 0 ? html : '<p class="text-slate-500 p-2">まだ無印のデータがありません。</p>';
-    }
+      div.innerHTML = count > 0 ? html : '<p class="text-slate-500 p-2">まだ無印（☆★）のデータがありません。</p>';
+     }
 
-    function renderChart() {
+     function renderChart() {
       const ctx = document.getElementById('payoutChart');
       if(chartInstance) chartInstance.destroy();
       const reversedDb = [...db].reverse(); 
