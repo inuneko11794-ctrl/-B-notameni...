@@ -28,47 +28,52 @@
   <div class="max-w-md mx-auto p-4 space-y-5">
     <header class="text-center pb-4 border-b border-slate-800">
       <h1 class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-wider">B.Y.N ANALYZER</h1>
-      <p class="text-[10px] text-cyan-500 tracking-[0.2em] mt-1 uppercase">Ultimate Cross-Site Dashboard</p>
+      <p class="text-[10px] text-cyan-500 tracking-[0.2em] mt-1 uppercase">Stock & Consume Dashboard</p>
     </header>
 
     <!-- メインタブ -->
     <div class="flex bg-slate-900 p-1.5 rounded-xl border border-slate-700 shadow-inner">
-      <button onclick="switchMainTab('parse')" id="tab-parse" class="flex-1 py-3 text-xs font-bold bg-slate-800 rounded-lg shadow-lg text-cyan-400 border border-slate-600 transition-all">データ解析 & AI</button>
+      <button onclick="switchMainTab('parse')" id="tab-parse" class="flex-1 py-3 text-xs font-bold bg-slate-800 rounded-lg shadow-lg text-cyan-400 border border-slate-600 transition-all">ストック＆解析</button>
       <button onclick="switchMainTab('dash')" id="tab-dash" class="flex-1 py-3 text-xs font-bold text-slate-500 transition-all">文殊ダッシュボード</button>
     </div>
 
-    <!-- 解析タブ -->
+    <!-- 🌟 ストック＆解析タブ -->
     <div id="view-parse" class="space-y-4">
       
-      <!-- BYN サブタブ -->
-      <div class="flex space-x-2 mt-2">
-        <button onclick="switchSiteTab('B')" id="site-btn-B" class="flex-1 py-2 text-xs font-bold bg-blue-900/50 text-blue-400 border border-blue-500/50 rounded-lg transition-all">B 枠</button>
-        <button onclick="switchSiteTab('Y')" id="site-btn-Y" class="flex-1 py-2 text-xs font-bold bg-slate-800 text-slate-500 border border-slate-700 rounded-lg transition-all">Y 枠</button>
-        <button onclick="switchSiteTab('N')" id="site-btn-N" class="flex-1 py-2 text-xs font-bold bg-slate-800 text-slate-500 border border-slate-700 rounded-lg transition-all">N 枠</button>
-      </div>
-
-      <div class="relative">
-        <textarea id="inputText" oninput="saveCurrentText()" rows="5" class="w-full p-4 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-300 focus:ring-2 focus:ring-cyan-500 focus:outline-none" placeholder="荒れ予想レースの出走表をペースト..."></textarea>
-        
-        <div class="absolute -bottom-4 right-2 flex space-x-2">
-          <button onclick="clearText()" class="bg-slate-700 hover:bg-red-900/80 text-slate-300 font-bold py-2 px-4 rounded-full shadow-lg text-[10px] tracking-wider transition-colors border border-slate-600">
-            🗑️ CLEAR
-          </button>
-          <button onclick="analyzeAllData()" class="bg-gradient-to-r from-cyan-500 to-blue-600 active:scale-95 text-white font-bold py-2 px-6 rounded-full shadow-[0_0_15px_rgba(6,182,212,0.4)] text-[11px] tracking-wider transition-transform">
-            EXECUTE
+      <div class="glass-panel p-3 rounded-xl border-blue-500/30 space-y-3">
+        <div class="flex justify-between items-center px-1">
+          <span class="text-[10px] text-cyan-400 font-bold tracking-widest">📝 レースを追加する</span>
+          <div class="flex space-x-1">
+            <button onclick="selectTargetSite('B')" id="add-btn-B" class="px-3 py-1 text-[10px] font-bold bg-blue-900 text-blue-300 rounded border border-blue-500 transition-all">B 枠</button>
+            <button onclick="selectTargetSite('Y')" id="add-btn-Y" class="px-3 py-1 text-[10px] font-bold bg-slate-800 text-slate-500 rounded border border-slate-700 transition-all">Y 枠</button>
+            <button onclick="selectTargetSite('N')" id="add-btn-N" class="px-3 py-1 text-[10px] font-bold bg-slate-800 text-slate-500 rounded border border-slate-700 transition-all">N 枠</button>
+          </div>
+        </div>
+        <div class="relative">
+          <textarea id="inputText" rows="3" class="w-full p-3 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-300 focus:ring-2 focus:ring-cyan-500 focus:outline-none" placeholder="出走表をペースト (EXECUTEでストックされます)"></textarea>
+          <button onclick="stockRaceData()" class="absolute -bottom-3 right-2 bg-gradient-to-r from-cyan-500 to-blue-600 active:scale-95 text-white font-bold py-1.5 px-5 rounded-full shadow-[0_0_10px_rgba(6,182,212,0.4)] text-[10px] tracking-wider transition-transform">
+            EXECUTE (ストック)
           </button>
         </div>
       </div>
 
-      <div id="raceTabsContainer" class="flex flex-wrap gap-2 mt-8"></div>
+       <!-- 発走待ちリスト -->
+      <div class="pt-4">
+        <h3 class="text-[10px] text-slate-400 font-bold tracking-widest mb-2 flex items-center">
+          <span>⏳ 発走待ちリスト (未結果)</span>
+          <span id="pendingCountBadge" class="ml-2 bg-slate-800 px-2 py-0.5 rounded-full text-cyan-400">0</span>
+        </h3>
+        <div id="raceTabsContainer" class="flex flex-wrap gap-2"></div>
+      </div>
 
-      <div id="raceContentArea" class="hidden space-y-4 mt-4">
-        <div class="glass-panel p-3 rounded-xl flex flex-col space-y-1">
-          <span class="text-[10px] text-cyan-400 font-bold tracking-widest flex justify-between">
+      <div id="raceContentArea" class="hidden space-y-4 mt-2 border-t border-slate-800 pt-4">
+        <div class="glass-panel p-3 rounded-xl flex flex-col space-y-1 relative">
+          <button onclick="removePendingRace()" class="absolute top-2 right-2 text-slate-500 hover:text-red-400 text-[10px] bg-slate-900 px-2 py-1 rounded border border-slate-700">ストック破棄</button>
+          <span class="text-[10px] text-cyan-400 font-bold tracking-widest flex items-center">
             <span>LINE PREDICTION</span>
-            <span id="currentRaceBadge" class="bg-cyan-900 text-cyan-300 px-1.5 py-0.5 rounded"></span>
+            <span id="currentRaceBadge" class="ml-3 bg-cyan-900 text-cyan-300 px-2 py-0.5 rounded shadow-sm"></span>
           </span>
-          <span class="text-sm font-bold text-slate-100 tracking-wider" id="lineInfo"></span>
+          <span class="text-sm font-bold text-slate-100 tracking-wider mt-1" id="lineInfo"></span>
         </div>
         <div id="flagContainer" class="hidden bg-red-950/40 border border-red-500/50 p-3 rounded-xl">
           <h3 class="text-red-400 font-bold mb-2 text-[10px] tracking-wider flex items-center">
@@ -82,14 +87,10 @@
 
     <!-- 🌟 ダッシュボードタブ -->
     <div id="view-dash" class="hidden space-y-5">
-      
-      <!-- BYN比較 & ◎ぶっ飛び率 -->
       <div class="glass-panel p-4 rounded-xl space-y-3 border-cyan-500/30">
         <h2 class="font-bold text-xs text-cyan-400 tracking-wider">🏆 サイト別 荒れ予想＆印レポート</h2>
         <div id="bynStats" class="space-y-2 text-xs"></div>
       </div>
-
-      <!-- 無印ポジション分析 -->
       <div class="glass-panel p-4 rounded-xl space-y-3 border-yellow-500/30">
         <h2 class="font-bold text-xs text-yellow-400 tracking-wider flex items-center">
           <span>💣 無印・穴馬の発生ポジション</span>
@@ -97,44 +98,55 @@
         </h2>
         <div id="mujirushiStats" class="text-[10px] text-slate-300 space-y-2 max-h-48 overflow-y-auto pr-1"></div>
       </div>
-
-      <!-- トレンドグラフ -->
       <div class="glass-panel p-4 rounded-xl">
         <h2 class="font-bold mb-4 text-xs text-cyan-400 tracking-wider">3連単配当トレンド</h2>
         <div class="relative h-48 w-full"><canvas id="payoutChart"></canvas></div>
       </div>
-
-       <!-- 同県ブラックリスト -->
       <div class="glass-panel p-4 rounded-xl space-y-3">
         <h2 class="font-bold text-xs text-cyan-400 tracking-wider">同県先頭の信頼度（ブラックリスト）</h2>
         <div id="honestyStats" class="text-xs text-slate-300 space-y-2"></div>
       </div>
-
-      <!-- 保存履歴＆削除機能 -->
       <div class="glass-panel p-4 rounded-xl space-y-3">
         <h2 class="font-bold text-xs text-red-400 tracking-wider">🗑️ 最近の保存履歴 (削除・修正用)</h2>
         <div id="historyList" class="text-[10px] space-y-2 max-h-32 overflow-y-auto"></div>
       </div>
+      
+      <!-- 💾 データバックアップ＆復元パネル (新規追加) -->
+      <div class="glass-panel p-4 rounded-xl space-y-3 border-purple-500/30">
+        <h2 class="font-bold text-xs text-purple-400 tracking-wider flex items-center">
+          <span>💾 データ バックアップ ＆ 復元</span>
+        </h2>
+        <p class="text-[9px] text-slate-400">機種変更や万が一のデータ消失に備えて、全統計データとストックをファイルとして保存・読み込みできます。</p>
+        <div class="flex space-x-2">
+          <button onclick="exportData()" class="flex-1 bg-purple-900/50 hover:bg-purple-800 text-purple-300 font-bold py-2.5 rounded-lg border border-purple-700 text-xs transition-colors active:scale-95 shadow-lg">
+            📤 保存 (Backup)
+          </button>
+          <button onclick="document.getElementById('importFile').click()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-lg border border-slate-600 text-xs transition-colors active:scale-95">
+            📥 読込 (Load)
+          </button>
+          <!-- 隠しファイルインプット -->
+          <input type="file" id="importFile" accept=".json" class="hidden" onchange="importData(event)">
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- 📝【右下常駐：全自動 結果入力ドロワー】 -->
+   <!-- 📝【右下常駐：結果入力ドロワー (消化用)】 -->
   <div class="fixed bottom-3 right-3 left-3 z-50 max-w-md mx-auto pb-safe">
     <details id="resultDrawer" class="glass-panel rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] overflow-hidden transition-all group">
       <summary class="px-5 py-4 flex justify-between items-center cursor-pointer bg-slate-800/90 active:bg-slate-700 border-t border-slate-700">
         <div class="flex items-center space-x-2">
           <span class="text-cyan-400 text-lg">📝</span>
-          <span class="text-[11px] font-bold text-slate-100 tracking-wider" id="drawerTitle">結果を入力 (解析データ待ち)</span>
+          <span class="text-[11px] font-bold text-slate-100 tracking-wider" id="drawerTitle">結果を入力して消化する</span>
         </div>
         <span class="text-[10px] bg-slate-900 border border-slate-600 px-3 py-1 rounded-full text-slate-300 group-open:text-cyan-400">開閉</span>
       </summary>
       
       <div class="p-5 space-y-4 border-t border-slate-700/50 max-h-[75vh] overflow-y-auto">
         <div class="bg-blue-900/30 border border-blue-500/30 p-2 rounded text-[10px] text-blue-300 flex items-center">
-          ℹ️ 現在開いている【 <span id="targetRaceDisplay" class="font-bold text-white mx-1">未選択</span> 】のデータに紐付けて記録します。
+          ℹ️ 現在開いている【 <span id="targetRaceDisplay" class="font-bold text-white mx-1">未選択</span> 】のデータを消化し、統計へ送ります。
         </div>
 
-        <!-- 着順 -->
         <div class="flex space-x-3">
           <div class="flex-1 text-center">
             <label class="text-[10px] text-yellow-500 font-bold block mb-1">1着</label>
@@ -175,28 +187,26 @@
           </div>
         </div>
 
-        <button onclick="saveResultData()" class="w-full bg-gradient-to-r from-cyan-600 to-blue-700 active:scale-95 text-white font-bold py-3.5 rounded-lg text-sm tracking-widest shadow-lg transition-transform">
-          SAVE TO DATABASE
+        <button onclick="consumeResultData()" class="w-full bg-gradient-to-r from-cyan-600 to-blue-700 active:scale-95 text-white font-bold py-3.5 rounded-lg text-sm tracking-widest shadow-lg transition-transform">
+          SAVE & CONSUME (消化)
         </button>
       </div>
     </details>
   </div>
 
-  <script>
+   <script>
     // データベース群
-    let db = JSON.parse(localStorage.getItem('bynDB') || '[]');
-    let honestyDB = JSON.parse(localStorage.getItem('honestyDB') || '[]');
-    let siteTexts = JSON.parse(localStorage.getItem('siteTexts') || '{"B":"","Y":"","N":""}');
+    let pendingRaces = JSON.parse(localStorage.getItem('pendingRaces') || '[]'); 
+    let db = JSON.parse(localStorage.getItem('bynDB') || '[]'); 
+    let honestyDB = JSON.parse(localStorage.getItem('honestyDB') || '[]'); 
     
-    let currentSite = 'B'; 
-    let currentRaceNum = null;
-    let parsedRaces = { B: {}, Y: {}, N: {} };
+    let targetSiteForInput = 'B'; 
+    let currentSelectedRaceId = null; 
     let chartInstance = null;
 
-    document.getElementById('inputText').value = siteTexts[currentSite];
-    updateDrawerTarget();
+    // 初期化
+    renderPendingTabs();
 
-    // タブ切り替え
     function switchMainTab(tab) {
       document.getElementById('view-parse').classList.toggle('hidden', tab !== 'parse');
       document.getElementById('view-dash').classList.toggle('hidden', tab !== 'dash');
@@ -212,65 +222,50 @@
       if (tab === 'dash') renderAllDashboards();
     }
 
-    function switchSiteTab(site) {
-      currentSite = site;
+    function selectTargetSite(site) {
+      targetSiteForInput = site;
       ['B','Y','N'].forEach(s => {
-        document.getElementById(`site-btn-${s}`).className = (s === site)
-          ? "flex-1 py-2 text-xs font-bold bg-blue-900/50 text-blue-400 border border-blue-500/50 rounded-lg"
-          : "flex-1 py-2 text-xs font-bold bg-slate-800 text-slate-500 border border-slate-700 rounded-lg";
+        document.getElementById(`add-btn-${s}`).className = (s === site)
+          ? `px-3 py-1 text-[10px] font-bold bg-blue-900 text-blue-300 rounded border border-blue-500 transition-all`
+          : `px-3 py-1 text-[10px] font-bold bg-slate-800 text-slate-500 rounded border border-slate-700 transition-all`;
       });
-      document.getElementById('inputText').value = siteTexts[currentSite];
-      currentRaceNum = null; 
-      renderRaceTabs();
-      updateDrawerTarget();
     }
 
-    function clearText() {
-      if(confirm('この枠のテキストを空にしますか？')) {
-        document.getElementById('inputText').value = '';
-        saveCurrentText();
-        parsedRaces[currentSite] = {};
-        currentRaceNum = null;
-        renderRaceTabs();
-        updateDrawerTarget();
-      }
-    }
-
-    function saveCurrentText() {
-      siteTexts[currentSite] = document.getElementById('inputText').value;
-      localStorage.setItem('siteTexts', JSON.stringify(siteTexts));
-    }
-
-    // 解析メインロジック
-    function analyzeAllData() {
+    // ストック＆解析 (EXECUTE)
+    function stockRaceData() {
       const text = document.getElementById('inputText').value;
       if(!text) return alert('データを入力してください。');
 
-      parsedRaces[currentSite] = {};
       const sections = text.split(/={30,}/).filter(s => s.trim() !== '');
       let tempRaceNum = null; let tempText = "";
+      let addedCount = 0;
 
       sections.forEach(section => {
         const match = section.match(/（.+?\s(\d+)R）/);
         if (match) {
-          if (tempRaceNum) processSingleRace(tempRaceNum, tempText);
+          if (tempRaceNum) { processAndStoreRace(tempRaceNum, tempText); addedCount++; }
           tempRaceNum = match[1]; tempText = section;
         } else {
           if (tempRaceNum) tempText += "\n" + section;
         }
       });
-      if (tempRaceNum) processSingleRace(tempRaceNum, tempText);
-      renderRaceTabs();
-      alert(`[${currentSite}枠] 解析完了！`);
+      if (tempRaceNum) { processAndStoreRace(tempRaceNum, tempText); addedCount++; }
+
+      if(addedCount > 0) {
+        document.getElementById('inputText').value = ''; 
+        renderPendingTabs();
+        alert(`${targetSiteForInput}枠のレースを ${addedCount}件 ストックしました！`);
+      } else {
+        alert('レース情報が正しく読み取れませんでした。');
+      }
     }
 
-    function processSingleRace(raceNum, text) {
+     function processAndStoreRace(raceNum, text) {
       const players = [];
       const flags = [];
       const lineMatch = text.match(/並び予想:\s*([^※\n]+)/);
       const lineInfo = lineMatch ? lineMatch[1].trim() : "";
       
-      // 無印ポジション用のラインパース
       const lineMap = {}; 
       const lineStrs = lineInfo.match(/\[([0-9\s]+)\]/g);
       if (lineStrs) {
@@ -278,17 +273,12 @@
           const cars = str.replace(/[\[\]]/g, '').trim().split(/\s+/).map(Number);
           const isTanki = cars.length === 1;
           cars.forEach((cNo, pIdx) => {
-            lineMap[cNo] = {
-              lIdx: lIdx + 1,
-              isTanki,
-              pos: isTanki ? '単騎' : (pIdx === 0 ? '先頭' : '番手以降'),
-              fCar: pIdx > 0 ? cars[pIdx - 1] : null
-            };
+            lineMap[cNo] = { lIdx: lIdx + 1, isTanki, pos: isTanki ? '単騎' : (pIdx === 0 ? '先頭' : '番手以降'), fCar: pIdx > 0 ? cars[pIdx - 1] : null };
           });
         });
       }
 
-    const blocks = text.split(/\[\d+\]/).slice(1);
+      const blocks = text.split(/\[\d+\]/).slice(1);
       blocks.forEach((block) => {
         if (!block.includes("競走得点")) return;
         const carNo = players.length + 1; 
@@ -296,48 +286,70 @@
         const prefM = block.match(/｜([^\sA-Za-z]+)\s+[A-Z]\d/);
         const scrM = block.match(/競走得点:([\d\.]+)/);
         const hbM = block.match(/H:(\d+) \/ B:(\d+)/);
-        
-        // 全角スペースなども含めて正しくAI印をキャプチャ
         const aiM = block.match(/AI印:([^\s/　]+)/);
 
         if (nameM && scrM && hbM) {
           const name = nameM[1].trim();
           const stamp = aiM ? aiM[1].trim() : "無";
           const aiScore = (parseFloat(scrM[1]) + (parseInt(hbM[1]) + parseInt(hbM[2])) * 0.5).toFixed(2);
-          
           const posInfo = lineMap[carNo] || { lIdx:0, isTanki:true, pos:'不明', fCar:null };
           
           players.push({ carNo, name, pref: prefM?prefM[1].trim():"", aiScore, stamp, ...posInfo });
           if ((stamp === '無' || stamp === '連下') && aiScore >= 85) flags.push(`【${carNo}番 ${name}】元AI低評価だが独自AIスコア上位！`);
         }
       });
-      parsedRaces[currentSite][raceNum] = { lineInfo, players, flags };
+
+      const newRaceId = `${targetSiteForInput}_${raceNum}`;
+      const raceObj = { id: newRaceId, site: targetSiteForInput, raceNum, lineInfo, players, flags };
+      
+      const existIdx = pendingRaces.findIndex(r => r.id === newRaceId);
+      if(existIdx > -1) pendingRaces[existIdx] = raceObj;
+      else pendingRaces.push(raceObj);
+      
+      localStorage.setItem('pendingRaces', JSON.stringify(pendingRaces));
     }
 
-    function renderRaceTabs() {
+    function renderPendingTabs() {
       const container = document.getElementById('raceTabsContainer');
+      document.getElementById('pendingCountBadge').innerText = pendingRaces.length;
       container.innerHTML = '';
-      const races = parsedRaces[currentSite];
-      const nums = Object.keys(races).sort((a,b) => parseInt(a) - parseInt(b));
       
-      if(nums.length === 0) {
+      if(pendingRaces.length === 0) {
         document.getElementById('raceContentArea').classList.add('hidden');
+        currentSelectedRaceId = null;
+        updateDrawerTarget();
         return;
       }
-      nums.forEach(num => {
+
+      const sorted = [...pendingRaces].sort((a,b) => {
+        if(a.site !== b.site) return a.site.localeCompare(b.site);
+        return parseInt(a.raceNum) - parseInt(b.raceNum);
+      });
+
+     sorted.forEach(race => {
         const btn = document.createElement('button');
-        btn.innerText = `${num} R`;
-        btn.className = "px-4 py-2 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-lg text-xs focus:bg-cyan-900 focus:text-cyan-300";
-        btn.onclick = () => showRace(num);
+        btn.innerText = `[${race.site}] ${race.raceNum}R`;
+        const isSelected = currentSelectedRaceId === race.id;
+        
+        btn.className = isSelected
+          ? "px-3 py-1.5 bg-cyan-900 border border-cyan-500 text-cyan-300 font-bold rounded-lg text-[11px] shadow-sm"
+          : "px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-400 font-bold rounded-lg text-[11px] hover:bg-slate-700";
+        
+        btn.onclick = () => showRace(race.id);
         container.appendChild(btn);
       });
-      showRace(nums[0]);
+      
+      if(!currentSelectedRaceId || !pendingRaces.find(r => r.id === currentSelectedRaceId)) {
+        showRace(sorted[0].id);
+      }
     }
 
-    function showRace(num) {
-      currentRaceNum = num;
-      const race = parsedRaces[currentSite][num];
-      document.getElementById('currentRaceBadge').innerText = `${currentSite}枠 - ${num}R`;
+    function showRace(id) {
+      currentSelectedRaceId = id;
+      const race = pendingRaces.find(r => r.id === id);
+      if (!race) return;
+
+      document.getElementById('currentRaceBadge').innerText = `${race.site}枠 - ${race.raceNum}R`;
       document.getElementById('lineInfo').innerText = race.lineInfo;
 
       document.getElementById('playersList').innerHTML = race.players.sort((a,b) => b.aiScore - a.aiScore).map(p => `
@@ -358,8 +370,8 @@
           </div>
         </div>
       `).join('');
-
-    const fList = document.getElementById('flagList');
+      
+      const fList = document.getElementById('flagList');
       if (race.flags.length > 0) {
         document.getElementById('flagContainer').classList.remove('hidden');
         fList.innerHTML = race.flags.map(f => `<li>${f}</li>`).join('');
@@ -367,26 +379,34 @@
         document.getElementById('flagContainer').classList.add('hidden');
       }
       document.getElementById('raceContentArea').classList.remove('hidden');
+      renderPendingTabs(); 
       updateDrawerTarget();
     }
 
-    function updateDrawerTarget() {
-      const disp = document.getElementById('targetRaceDisplay');
-      const title = document.getElementById('drawerTitle');
-      if(currentRaceNum && parsedRaces[currentSite][currentRaceNum]) {
-        disp.innerText = `${currentSite}枠 - ${currentRaceNum}R`;
-        title.innerText = `結果入力 [ ${currentSite}-${currentRaceNum}R ]`;
-      } else {
-        disp.innerText = "未選択";
-        title.innerText = "結果を入力 (レース未選択)";
+    function removePendingRace() {
+      if(!currentSelectedRaceId) return;
+      if(confirm('このストックを破棄しますか？(入力前のデータ削除)')) {
+        pendingRaces = pendingRaces.filter(r => r.id !== currentSelectedRaceId);
+        localStorage.setItem('pendingRaces', JSON.stringify(pendingRaces));
+        currentSelectedRaceId = null;
+        renderPendingTabs();
       }
     }
 
-    // データ保存
-    function saveResultData() {
-      if(!currentRaceNum || !parsedRaces[currentSite][currentRaceNum]) {
-        return alert('対象のレースタブを選択してから保存してください。');
+     function updateDrawerTarget() {
+      const disp = document.getElementById('targetRaceDisplay');
+      if(currentSelectedRaceId) {
+        const race = pendingRaces.find(r => r.id === currentSelectedRaceId);
+        disp.innerText = `${race.site}枠 - ${race.raceNum}R`;
+      } else {
+        disp.innerText = "未選択";
       }
+    }
+
+    // 保存＆消化ロジック (CONSUME)
+    function consumeResultData() {
+      if(!currentSelectedRaceId) return alert('対象のレースを選択してください。');
+      
       const r1 = parseInt(document.getElementById('res1').value);
       const r2 = parseInt(document.getElementById('res2').value);
       const r3 = parseInt(document.getElementById('res3').value);
@@ -394,17 +414,12 @@
       
       if (!r1 || !r2 || !r3) return alert('着順を入力してください');
 
-      const raceData = parsedRaces[currentSite][currentRaceNum];
+      const raceData = pendingRaces.find(r => r.id === currentSelectedRaceId);
       const newId = Date.now();
 
       db.unshift({ 
-        id: newId,
-        site: currentSite,
-        raceNum: currentRaceNum,
-        r1, r2, r3,
-        pay3, 
-        isMansha: pay3 >= 10000,
-        players: raceData.players 
+        id: newId, site: raceData.site, raceNum: raceData.raceNum,
+        r1, r2, r3, pay3, isMansha: pay3 >= 10000, players: raceData.players 
       });
       localStorage.setItem('bynDB', JSON.stringify(db));
 
@@ -414,13 +429,21 @@
         honestyDB.unshift({ id: newId, car: parseInt(lCar), eval: lEval });
         localStorage.setItem('honestyDB', JSON.stringify(honestyDB));
       }
+
+      pendingRaces = pendingRaces.filter(r => r.id !== currentSelectedRaceId);
+      localStorage.setItem('pendingRaces', JSON.stringify(pendingRaces));
+      currentSelectedRaceId = null;
       
       ['res1','res2','res3','pay2','pay3','leaderCar'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('leaderEval').value = '';
       document.getElementById('resultDrawer').open = false;
-      alert(`[ ${currentSite}枠-${currentRaceNum}R ] の結果を保存・紐付けました！`);
-    }function deleteRecord(id) {
-      if(confirm('このレースデータを削除しますか？(統計からも消えます)')) {
+      
+      alert(`[ ${raceData.site}枠-${raceData.raceNum}R ] を消化し、統計に蓄積しました！`);
+      renderPendingTabs();
+    }
+
+    function deleteRecord(id) {
+      if(confirm('このレースデータを統計から削除しますか？')) {
         db = db.filter(d => d.id !== id);
         honestyDB = honestyDB.filter(d => d.id !== id);
         localStorage.setItem('bynDB', JSON.stringify(db));
@@ -429,7 +452,57 @@
       }
     }
 
-    // ダッシュボード群の描画
+      // ----------------------------------------------------
+    // データ管理 (バックアップ＆復元)
+    // ----------------------------------------------------
+    function exportData() {
+      const backupObj = {
+        bynDB: localStorage.getItem('bynDB') || '[]',
+        honestyDB: localStorage.getItem('honestyDB') || '[]',
+        pendingRaces: localStorage.getItem('pendingRaces') || '[]'
+      };
+      const jsonStr = JSON.stringify(backupObj);
+      const blob = new Blob([jsonStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      
+      // yyyymmdd形式のファイル名を作成
+      const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const fileName = `byn_analyzer_backup_${date}.json`;
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (confirm('現在のデータは上書きされ、バックアップ状態に戻ります。\nよろしいですか？')) {
+            if (data.bynDB) localStorage.setItem('bynDB', data.bynDB);
+            if (data.honestyDB) localStorage.setItem('honestyDB', data.honestyDB);
+            if (data.pendingRaces) localStorage.setItem('pendingRaces', data.pendingRaces);
+            
+            alert('データの復元が完了しました！アプリを再起動します。');
+            location.reload(); // リロードして画面に反映
+          }
+        } catch (err) {
+          alert('ファイルの読み込みに失敗しました。正しいバックアップファイルを選択してください。');
+        }
+        event.target.value = ''; // 連続で同じファイルを読めるようにリセット
+      };
+      reader.readAsText(file);
+    }
+
+    // ----- ダッシュボード群 -----
     function renderAllDashboards() {
       renderBYNStats();
       renderMujirushiStats();
@@ -459,25 +532,15 @@
         if(stats[d.site]) {
           stats[d.site].total++;
           if(d.isMansha) stats[d.site].mansha++;
-          
-          // ◎ぶっ飛び判定の修正版 (本命、◎、◎本命などの表記に対応し、完全な数値比較を実施)
           const honmeiP = d.players.find(p => p.stamp === '本命' || p.stamp === '◎' || p.stamp.includes('◎') || p.stamp.includes('本命'));
-          
           if(honmeiP) {
-            const hCar = Number(honmeiP.carNo); // 確実に数値化
-            const r1 = Number(d.r1);
-            const r2 = Number(d.r2);
-            const r3 = Number(d.r3);
-            
-            // 1〜3着のどれにも本命の車番がいなければ「飛んだ」と判定
-            if (r1 !== hCar && r2 !== hCar && r3 !== hCar) {
-              stats[d.site].honmeiFly++;
-            }
+            const hCar = Number(honmeiP.carNo);
+            if (Number(d.r1) !== hCar && Number(d.r2) !== hCar && Number(d.r3) !== hCar) stats[d.site].honmeiFly++;
           }
         }
       });
 
-    div.innerHTML = ['B','Y','N'].map(s => {
+      div.innerHTML = ['B','Y','N'].map(s => {
         const st = stats[s];
         const mRate = st.total ? Math.round((st.mansha/st.total)*100) : 0;
         const fRate = st.total ? Math.round((st.honmeiFly/st.total)*100) : 0;
@@ -492,11 +555,9 @@
       }).join('');
     }
 
-    function renderMujirushiStats() {
+     function renderMujirushiStats() {
       const div = document.getElementById('mujirushiStats');
-      let html = "";
-      let count = 0;
-
+      let html = ""; let count = 0;
       db.forEach(d => {
         [d.r1, d.r2, d.r3].forEach((resCar, idx) => {
           const p = d.players.find(x => x.carNo === resCar);
@@ -504,20 +565,12 @@
             count++;
             const rank = idx + 1;
             const rankColor = rank === 1 ? 'text-yellow-500' : (rank === 2 ? 'text-slate-300' : 'text-orange-400');
-            const posDesc = p.isTanki ? '単騎' : `第${p.lIdx}ラインの ${p.pos}`;
-            
+            const posDesc = p.isTanki ? '単騎' : `第${p.lIdx}Lの${p.pos}`;
             let frontStamp = "-";
-            if(p.fCar) {
-              const fp = d.players.find(x => x.carNo === p.fCar);
-              if(fp) frontStamp = fp.stamp;
-            }
-
+            if(p.fCar) { const fp = d.players.find(x => x.carNo === p.fCar); if(fp) frontStamp = fp.stamp; }
             html += `
               <div class="bg-slate-800/30 p-2 border-l-2 border-yellow-500 mb-1 flex justify-between items-center">
-                <div>
-                  <span class="font-bold ${rankColor} mr-1">${rank}着</span>
-                  <span class="text-slate-300">${d.site}枠 ${d.raceNum}R</span>
-                </div>
+                <div><span class="font-bold ${rankColor} mr-1">${rank}着</span><span class="text-slate-300">${d.site}枠 ${d.raceNum}R</span></div>
                 <div class="text-right text-[9px]">
                   <span class="bg-slate-900 px-1 py-0.5 rounded text-yellow-300">${posDesc}</span>
                   ${p.fCar ? `<br><span class="text-slate-500">前の印: ${frontStamp}</span>` : ''}
@@ -527,7 +580,7 @@
           }
         });
       });
-      div.innerHTML = count > 0 ? html : '<p class="text-slate-500 p-2">まだ無印の突っ込みデータがありません。</p>';
+      div.innerHTML = count > 0 ? html : '<p class="text-slate-500 p-2">まだ無印のデータがありません。</p>';
     }
 
     function renderChart() {
@@ -552,9 +605,7 @@
       
       const counts = honestyDB.reduce((acc, curr) => {
         if(!acc[curr.car]) acc[curr.car] = { good:0, normal:0, bad:0, perfect:0, total:0 };
-        acc[curr.car][curr.eval]++;
-        acc[curr.car].total++;
-        return acc;
+        acc[curr.car][curr.eval]++; acc[curr.car].total++; return acc;
       }, {});
 
       div.innerHTML = Object.entries(counts).map(([car, s]) => `
@@ -572,4 +623,3 @@
   </script>
 </body>
 </html>
-
