@@ -54,8 +54,7 @@
           </button>
         </div>
       </div>
-
-      <div class="pt-4">
+       <div class="pt-4">
         <h3 class="text-[10px] text-slate-400 font-bold tracking-widest mb-2 flex items-center">
           <span>⏳ 発走待ちリスト (未結果)</span>
           <span id="pendingCountBadge" class="ml-2 bg-slate-800 px-2 py-0.5 rounded-full text-cyan-400">0</span>
@@ -82,7 +81,7 @@
       </div>
     </div>
 
-     <!-- 🌟 ダッシュボードタブ -->
+    <!-- 🌟 ダッシュボードタブ -->
     <div id="view-dash" class="hidden space-y-5">
       <div class="glass-panel p-4 rounded-xl space-y-3 border-cyan-500/30">
         <h2 class="font-bold text-xs text-cyan-400 tracking-wider">🏆 サイト別 荒れ予想＆印レポート</h2>
@@ -90,13 +89,13 @@
       </div>
       <div class="glass-panel p-4 rounded-xl space-y-3 border-yellow-500/30">
         <h2 class="font-bold text-xs text-yellow-400 tracking-wider flex items-center">
-          <span>💣 穴馬の発生ポジション (☆★⑳●▲✖T)</span>
+          <span>💣 穴車の発生ポジション (☆★⑳●▲✖T)</span>
           <span class="ml-auto text-[9px] bg-slate-800 px-2 py-0.5 rounded border border-slate-700">直近の傾向</span>
         </h2>
         <div id="mujirushiStats" class="text-[10px] text-slate-300 space-y-2 max-h-48 overflow-y-auto pr-1"></div>
       </div>
       
-      <!-- 🌟 追加：コメント言行不一致ダッシュボード -->
+      <!-- 🌟 コメント言行不一致ダッシュボード -->
       <div class="glass-panel p-4 rounded-xl space-y-3 border-pink-500/30">
         <h2 class="font-bold text-xs text-pink-400 tracking-wider flex items-center">
           <span>🎭 コメント言行不一致（詐欺リスト）</span>
@@ -167,7 +166,7 @@
           </div>
         </div>
 
-         <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-700 space-y-2">
+        <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-700 space-y-2">
           <label class="text-[10px] text-red-400 font-bold block">🚨 同県先頭の評価 (車番入力 → 名前で自動記録)</label>
           <div class="flex space-x-2">
             <input type="number" inputmode="numeric" id="leaderCar" placeholder="車番" class="w-16 p-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-center text-sm">
@@ -192,7 +191,7 @@
     let pendingRaces = JSON.parse(localStorage.getItem('pendingRaces') || '[]'); 
     let db = JSON.parse(localStorage.getItem('bynDB') || '[]'); 
     let honestyDB = JSON.parse(localStorage.getItem('honestyDB') || '[]'); 
-    let commentDB = JSON.parse(localStorage.getItem('commentDB') || '{}'); // 🌟 コメント詐欺リスト
+    let commentDB = JSON.parse(localStorage.getItem('commentDB') || '{}'); 
     
     let targetSiteForInput = 'B'; 
     let currentSelectedRaceId = null; 
@@ -276,15 +275,13 @@
       const pMatch = text.match(/（\s*([^\s0-9]+)\s+\d+R\s*）/);
       const place = pMatch ? pMatch[1] : defaultPlace;
 
-      const isGirls = text.includes('ガールズ') || text.includes('L級') || text.includes('L1');
-
       const lineMatch = text.match(/並び予想:\s*([^\n※]+)/);
       const lineInfo = lineMatch ? lineMatch[1].trim() : "";
       
       const lineMap = {}; 
       let actualLineCount = 0;
       
-      if (lineInfo && !isGirls) {
+      if (lineInfo) {
         const zenkakuToHankaku = (str) => str.replace(/[１-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/[①-⑨]/g, s => String.fromCharCode(s.charCodeAt(0) - 0x245F));
         const normLine = zenkakuToHankaku(lineInfo);
         
@@ -311,7 +308,9 @@
         });
       }
 
-    const rawPlayers = [];
+      const isGirls = (actualLineCount === 0);
+
+      const rawPlayers = [];
       const blocks = text.split(/\[\d+\]/).slice(1);
       blocks.forEach((block) => {
         if (!block.includes("競走得点")) return;
@@ -327,7 +326,6 @@
           const stamp = normalizeStamp(aiM ? aiM[1] : "");
           const aiScore = (parseFloat(scrM[1]) + (parseInt(hbM[1]) + parseInt(hbM[2])) * 0.5).toFixed(2);
           
-          // 💡 強気・弱気のコメント判定
           let commentState = 'none';
           const sCount = wordsStrong.filter(w => block.includes(w)).length;
           const wCount = wordsWeak.filter(w => block.includes(w)).length;
@@ -339,7 +337,7 @@
         }
       });
 
-      rawPlayers.forEach(p => {
+    rawPlayers.forEach(p => {
         let finalStamp = p.stamp;
         if (finalStamp === '無' && !isGirls) {
           const beforeP = rawPlayers.find(x => x.carNo === p.fCar);
@@ -362,14 +360,13 @@
             }
           }
         }
-
-                         players.push({ ...p, stamp: finalStamp });
+        
+        players.push({ ...p, stamp: finalStamp });
 
         if (['☆','★','⑳','●','▲','✖','△','T'].includes(finalStamp) && p.aiScore >= 85) {
           flags.push(`【${p.carNo}番 ${p.name} (${finalStamp})】元AI低評価だが独自AIスコア上位！`);
         }
         
-        // 💡 画面にも強気・弱気アイコンを出して意識させる
         if(p.commentState === 'strong') flags.push(`💬 【${p.carNo}番 ${p.name}】強気コメントを検出！（結果次第で口だけ番長判定）`);
         if(p.commentState === 'weak') flags.push(`💬 【${p.carNo}番 ${p.name}】弱気コメントを検出！（結果次第で三味線判定）`);
       });
@@ -411,15 +408,15 @@
       const race = pendingRaces.find(r => r.id === id);
       if (!race) return;
 
-      document.getElementById('currentRaceBadge').innerText = `${race.site}枠 - ${race.place || ''} ${race.raceNum}R${race.isGirls ? ' (ガールズ)' : ''}`;
-      document.getElementById('lineInfo').innerText = race.isGirls ? 'ガールズケイリン (単騎戦)' : race.lineInfo;
+      document.getElementById('currentRaceBadge').innerText = `${race.site}枠 - ${race.place || ''} ${race.raceNum}R${race.isGirls ? ' (全員単騎)' : ''}`;
+      document.getElementById('lineInfo').innerText = race.isGirls ? '全員単騎戦 (特殊印なし)' : race.lineInfo;
 
       document.getElementById('playersList').innerHTML = race.players.sort((a,b) => b.aiScore - a.aiScore).map(p => {
         let commentBadge = '';
         if(p.commentState === 'strong') commentBadge = `<span class="ml-1 text-[8px] bg-red-900 text-red-200 px-1 rounded border border-red-700">強気</span>`;
         if(p.commentState === 'weak') commentBadge = `<span class="ml-1 text-[8px] bg-blue-900 text-blue-200 px-1 rounded border border-blue-700">弱気</span>`;
-        
-        return `
+
+                                                                                                               return `
         <div class="glass-panel p-3 rounded-xl flex justify-between items-center">
           <div class="flex items-center space-x-3">
             <div class="w-8 h-8 rounded-full flex items-center justify-center font-black text-sm car-${p.carNo}">${p.carNo}</div>
@@ -493,14 +490,11 @@
         localStorage.setItem('honestyDB', JSON.stringify(honestyDB));
       }
 
-      // 💡 三味線＆口だけ番長の自動判定・記録 (1レースにつき1回だけ記録)
       baseRace.players.forEach(p => {
         if (!commentDB[p.name]) commentDB[p.name] = { shamisen: 0, bigmouth: 0 };
-        // 強気なのに3着以下 (1・2着を逃す)
         if (p.commentState === 'strong' && (p.carNo !== r1 && p.carNo !== r2)) {
           commentDB[p.name].bigmouth++;
         }
-        // 弱気なのに1・2着に突っ込む
         if (p.commentState === 'weak' && (p.carNo === r1 || p.carNo === r2)) {
           commentDB[p.name].shamisen++;
         }
@@ -516,8 +510,7 @@
       document.getElementById('resultDrawer').open = false;
       alert(`[ ${baseRace.place || ''} ${baseRace.raceNum}R ] を ${addedSites.join(', ')}枠まとめて消化しました！`);
       renderPendingTabs();
-    }
-
+            }
     function deleteRecord(id) {
       if(confirm('このレースデータを統計から削除しますか？')) {
         db = db.filter(d => d.id !== id); localStorage.setItem('bynDB', JSON.stringify(db)); renderAllDashboards();
@@ -583,7 +576,7 @@
           <button onclick="deleteRecord(${d.id})" class="text-red-500 hover:text-red-300 font-bold px-2 py-0.5 border border-red-900 rounded bg-red-950/50">×</button>
         </div>
       `).join('');
-              }
+    }
 
     function renderBYNStats() {
       const div = document.getElementById('bynStats');
@@ -608,6 +601,7 @@
       }).join('');
     }
 
+    // 💡 穴車の表記修正 ＆ 行ごとの削除ボタン（×）追加
     function renderMujirushiStats() {
       const div = document.getElementById('mujirushiStats');
       let html = ""; let count = 0;
@@ -622,24 +616,24 @@
             const frontStamp = p.fCar ? (d.players.find(x => x.carNo === p.fCar)?.stamp || "-") : "-";
             html += `
               <div class="bg-slate-800/30 p-2 border-l-2 border-yellow-500 mb-1 flex justify-between items-center">
-                <div>
+                <div class="flex-1">
                   <span class="font-bold ${rankColor} mr-1">${rank}着</span>
                   <span class="text-slate-300">${d.site}枠 ${d.place || ''}${d.raceNum}R</span>
                   <span class="ml-1 px-1.5 py-0.5 bg-slate-900 text-yellow-400 rounded text-[10px] font-bold">${p.stamp}</span>
                 </div>
-                <div class="text-right text-[9px]">
+                <div class="text-right text-[9px] mr-3">
                   <span class="bg-slate-900 px-1 py-0.5 rounded text-yellow-300">${p.isTanki ? '単騎' : `第${p.lIdx}Lの${p.pos}`}</span>
                   ${p.fCar ? `<br><span class="text-slate-500">前の印: ${frontStamp}</span>` : ''}
                 </div>
+                <button onclick="deleteRecord(${d.id})" class="text-red-500 hover:text-red-300 font-bold px-2 py-0.5 border border-red-900 rounded bg-red-950/50 text-[10px]">×</button>
               </div>
             `;
           }
         });
       });
-      div.innerHTML = count > 0 ? html : '<p class="text-slate-500 p-2">まだ穴馬（☆★⑳●▲✖T）のデータがありません。</p>';
+      div.innerHTML = count > 0 ? html : '<p class="text-slate-500 p-2">まだ穴車（☆★⑳●▲✖T）のデータがありません。</p>';
     }
 
-    // 💡 新設：コメント詐欺（三味線＆口だけ）の描画ロジック
     function renderCommentStats() {
       const div = document.getElementById('commentStats');
       const badActors = Object.entries(commentDB).filter(([_, s]) => s.shamisen > 0 || s.bigmouth > 0);
@@ -655,7 +649,7 @@
           <button onclick="deleteCommentPlayer('${name}')" class="text-pink-500 hover:text-pink-300 font-bold px-2 py-0.5 border border-pink-900 rounded bg-pink-950/50 text-[10px]">×</button>
         </div>
       `).join('');
-    }
+              }
 
     function renderHonestyStats() {
       const div = document.getElementById('honestyStats');
