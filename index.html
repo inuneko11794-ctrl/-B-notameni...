@@ -63,7 +63,7 @@
         <div id="raceTabsContainer" class="flex flex-wrap gap-2"></div>
       </div>
 
-       <div id="raceContentArea" class="hidden space-y-4 mt-2 border-t border-slate-800 pt-4">
+      <div id="raceContentArea" class="hidden space-y-4 mt-2 border-t border-slate-800 pt-4">
         <div class="glass-panel p-3 rounded-xl flex flex-col space-y-1 relative">
           <button onclick="removePendingRace()" class="absolute top-2 right-2 text-slate-500 hover:text-red-400 text-[10px] bg-slate-900 px-2 py-1 rounded border border-slate-700">ストック破棄</button>
           <span class="text-[10px] text-cyan-400 font-bold tracking-widest flex items-center">
@@ -82,7 +82,7 @@
       </div>
     </div>
 
-    <!-- 🌟 ダッシュボードタブ -->
+     <!-- 🌟 ダッシュボードタブ -->
     <div id="view-dash" class="hidden space-y-5">
       <div class="glass-panel p-4 rounded-xl space-y-3 border-cyan-500/30">
         <h2 class="font-bold text-xs text-cyan-400 tracking-wider">🏆 サイト別 荒れ予想＆印レポート</h2>
@@ -90,17 +90,26 @@
       </div>
       <div class="glass-panel p-4 rounded-xl space-y-3 border-yellow-500/30">
         <h2 class="font-bold text-xs text-yellow-400 tracking-wider flex items-center">
-          <span>💣 穴馬の発生ポジション (☆★⑳●▲✖)</span>
+          <span>💣 穴馬の発生ポジション (☆★⑳●▲✖T)</span>
           <span class="ml-auto text-[9px] bg-slate-800 px-2 py-0.5 rounded border border-slate-700">直近の傾向</span>
         </h2>
         <div id="mujirushiStats" class="text-[10px] text-slate-300 space-y-2 max-h-48 overflow-y-auto pr-1"></div>
       </div>
+      
+      <!-- 🌟 追加：コメント言行不一致ダッシュボード -->
+      <div class="glass-panel p-4 rounded-xl space-y-3 border-pink-500/30">
+        <h2 class="font-bold text-xs text-pink-400 tracking-wider flex items-center">
+          <span>🎭 コメント言行不一致（詐欺リスト）</span>
+        </h2>
+        <div id="commentStats" class="text-xs text-slate-300 space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+      </div>
+
       <div class="glass-panel p-4 rounded-xl">
         <h2 class="font-bold mb-4 text-xs text-cyan-400 tracking-wider">3連単配当トレンド</h2>
         <div class="relative h-48 w-full"><canvas id="payoutChart"></canvas></div>
       </div>
       <div class="glass-panel p-4 rounded-xl space-y-3">
-        <h2 class="font-bold text-xs text-cyan-400 tracking-wider">同県先頭の信頼度（ブラックリスト）</h2>
+        <h2 class="font-bold text-xs text-cyan-400 tracking-wider">同県先頭の信頼度（名前で記録）</h2>
         <div id="honestyStats" class="text-xs text-slate-300 space-y-2"></div>
       </div>
       <div class="glass-panel p-4 rounded-xl space-y-3 border-purple-500/30">
@@ -129,7 +138,7 @@
       
       <div class="p-5 space-y-4 border-t border-slate-700/50 max-h-[75vh] overflow-y-auto">
         <div class="bg-blue-900/30 border border-blue-500/30 p-2 rounded text-[10px] text-blue-300 flex items-center">
-          ℹ️ 【 <span id="targetRaceDisplay" class="font-bold text-white mx-1">未選択</span> 】と同条件の全サイトのデータを一括消化し、統計へ送ります。
+          ℹ️ 【 <span id="targetRaceDisplay" class="font-bold text-white mx-1">未選択</span> 】と同条件の全サイトを一括消化し、コメントの「三味線判定」も自動記録します。
         </div>
 
         <div class="flex space-x-3">
@@ -158,8 +167,8 @@
           </div>
         </div>
 
-        <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-700 space-y-2">
-          <label class="text-[10px] text-red-400 font-bold block">🚨 同県先頭の評価 (任意)</label>
+         <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-700 space-y-2">
+          <label class="text-[10px] text-red-400 font-bold block">🚨 同県先頭の評価 (車番入力 → 名前で自動記録)</label>
           <div class="flex space-x-2">
             <input type="number" inputmode="numeric" id="leaderCar" placeholder="車番" class="w-16 p-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-center text-sm">
             <select id="leaderEval" class="flex-1 p-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-[11px] appearance-none">
@@ -179,14 +188,19 @@
     </details>
   </div>
 
-   <script>
+  <script>
     let pendingRaces = JSON.parse(localStorage.getItem('pendingRaces') || '[]'); 
     let db = JSON.parse(localStorage.getItem('bynDB') || '[]'); 
     let honestyDB = JSON.parse(localStorage.getItem('honestyDB') || '[]'); 
+    let commentDB = JSON.parse(localStorage.getItem('commentDB') || '{}'); // 🌟 コメント詐欺リスト
     
     let targetSiteForInput = 'B'; 
     let currentSelectedRaceId = null; 
     let chartInstance = null;
+
+    // 💡 強気・弱気 判定用キーワード辞書
+    const wordsStrong = ['絶好調', '好調', '余裕', '自力', '先行基本', '気合', '自信', '上向き', '踏めている', '踏めてる', '動けている', '動けてる', '万全', '抜群', 'もがく', '逃げる'];
+    const wordsWeak = ['重い', '重たい', '一息', '欠場明け', '復帰戦', '疲れ', '一杯', '離れた', 'イマイチ', '不調', '不安', 'ついていくだけ', '展開次第'];
 
     renderPendingTabs();
 
@@ -255,7 +269,7 @@
       }
     }
 
-     function processAndStoreRace(raceNum, text, defaultPlace) {
+    function processAndStoreRace(raceNum, text, defaultPlace) {
       const players = [];
       const flags = [];
       
@@ -264,37 +278,40 @@
 
       const isGirls = text.includes('ガールズ') || text.includes('L級') || text.includes('L1');
 
-      const lineMatch = text.match(/並び予想:\s*([^※\n]+)/);
+      const lineMatch = text.match(/並び予想:\s*([^\n※]+)/);
       const lineInfo = lineMatch ? lineMatch[1].trim() : "";
       
       const lineMap = {}; 
-      const lineStrs = lineInfo.match(/\[([0-9\s]+)\]/g);
-      
       let actualLineCount = 0;
-      if (lineStrs && !isGirls) {
-        lineStrs.forEach((str) => {
-          const cars = str.replace(/[\[\]]/g, '').trim().split(/\s+/).map(Number);
+      
+      if (lineInfo && !isGirls) {
+        const zenkakuToHankaku = (str) => str.replace(/[１-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/[①-⑨]/g, s => String.fromCharCode(s.charCodeAt(0) - 0x245F));
+        const normLine = zenkakuToHankaku(lineInfo);
+        
+        let groups = [];
+        const bracketMatch = normLine.match(/\[([0-9\s]+)\]/g);
+        if (bracketMatch) {
+          groups = bracketMatch.map(g => g.replace(/[\[\]]/g, '').trim().replace(/\s+/g, ''));
+        } else {
+          groups = normLine.split(/[\s\/\+]+/).filter(s => /[1-9]/.test(s)).map(g => g.replace(/[^1-9]/g, ''));
+        }
+
+        groups.forEach((str) => {
+          const cars = str.split('').map(Number).filter(n => n >= 1 && n <= 9);
+          if (cars.length === 0) return;
           const isTanki = cars.length === 1; 
-          
           if (!isTanki) {
             actualLineCount++;
             cars.forEach((cNo, pIdx) => {
-              lineMap[cNo] = {
-                lIdx: actualLineCount,
-                isTanki: false,
-                pos: pIdx === 0 ? '先頭' : '番手以降',
-                fCar: pIdx > 0 ? cars[pIdx - 1] : null
-              };
+              lineMap[cNo] = { lIdx: actualLineCount, isTanki: false, pos: pIdx === 0 ? '先頭' : '番手以降', fCar: pIdx > 0 ? cars[pIdx - 1] : null };
             });
           } else {
-            cars.forEach((cNo) => {
-              lineMap[cNo] = { lIdx: null, isTanki: true, pos: '単騎', fCar: null };
-            });
+            cars.forEach(cNo => lineMap[cNo] = { lIdx: null, isTanki: true, pos: '単騎', fCar: null });
           }
         });
       }
 
-      const rawPlayers = [];
+    const rawPlayers = [];
       const blocks = text.split(/\[\d+\]/).slice(1);
       blocks.forEach((block) => {
         if (!block.includes("競走得点")) return;
@@ -310,50 +327,51 @@
           const stamp = normalizeStamp(aiM ? aiM[1] : "");
           const aiScore = (parseFloat(scrM[1]) + (parseInt(hbM[1]) + parseInt(hbM[2])) * 0.5).toFixed(2);
           
-          const posInfo = isGirls 
-            ? { lIdx: null, isTanki: true, pos: '単騎', fCar: null }
-            : (lineMap[carNo] || { lIdx: null, isTanki: true, pos: '単騎', fCar: null });
+          // 💡 強気・弱気のコメント判定
+          let commentState = 'none';
+          const sCount = wordsStrong.filter(w => block.includes(w)).length;
+          const wCount = wordsWeak.filter(w => block.includes(w)).length;
+          if (sCount > wCount) commentState = 'strong';
+          else if (wCount > sCount) commentState = 'weak';
           
-          rawPlayers.push({ carNo, name, pref: prefM?prefM[1].trim():"", aiScore, stamp, ...posInfo });
+          const posInfo = isGirls ? { lIdx: null, isTanki: true, pos: '単騎', fCar: null } : (lineMap[carNo] || { lIdx: null, isTanki: true, pos: '単騎', fCar: null });
+          rawPlayers.push({ carNo, name, pref: prefM?prefM[1].trim():"", aiScore, stamp, commentState, ...posInfo });
         }
       });
 
       rawPlayers.forEach(p => {
         let finalStamp = p.stamp;
-        
         if (finalStamp === '無' && !isGirls) {
           const beforeP = rawPlayers.find(x => x.carNo === p.fCar);
           const afterP = rawPlayers.find(x => x.fCar === p.carNo);
-
           const adjacentStamps = [];
           if (beforeP) adjacentStamps.push(beforeP.stamp);
           if (afterP) adjacentStamps.push(afterP.stamp);
-          if (adjacentStamps.includes('◎')) {
-            finalStamp = '⑳';
-          } else if (adjacentStamps.includes('○')) {
-            finalStamp = '●';
-          } else if (adjacentStamps.includes('△')) {
-            finalStamp = '▲';
-          } else if (adjacentStamps.includes('☓')) {
-            finalStamp = '✖';
-          } else {
-            if (p.isTanki || p.pos === '先頭') {
-              finalStamp = '☆'; 
+
+          if (adjacentStamps.includes('◎')) finalStamp = '⑳';
+          else if (adjacentStamps.includes('○')) finalStamp = '●';
+          else if (adjacentStamps.includes('△')) finalStamp = '▲';
+          else if (adjacentStamps.includes('☓')) finalStamp = '✖';
+          else {
+            if (!p.isTanki) {
+              if (p.pos === '先頭') finalStamp = '☆'; 
+              else if (beforeP && (beforeP.stamp === '無' || beforeP.stamp === '☆')) finalStamp = '★'; 
+              else finalStamp = '無'; 
             } else {
-              if (beforeP && (beforeP.stamp === '無' || beforeP.stamp === '☆')) {
-                finalStamp = '★'; 
-              } else {
-                finalStamp = '無'; 
-              }
+              finalStamp = 'T'; // 男子単騎
             }
           }
         }
-        
-        players.push({ ...p, stamp: finalStamp });
 
-        if (['☆','★','⑳','●','▲','✖','△'].includes(finalStamp) && p.aiScore >= 85) {
+                         players.push({ ...p, stamp: finalStamp });
+
+        if (['☆','★','⑳','●','▲','✖','△','T'].includes(finalStamp) && p.aiScore >= 85) {
           flags.push(`【${p.carNo}番 ${p.name} (${finalStamp})】元AI低評価だが独自AIスコア上位！`);
         }
+        
+        // 💡 画面にも強気・弱気アイコンを出して意識させる
+        if(p.commentState === 'strong') flags.push(`💬 【${p.carNo}番 ${p.name}】強気コメントを検出！（結果次第で口だけ番長判定）`);
+        if(p.commentState === 'weak') flags.push(`💬 【${p.carNo}番 ${p.name}】弱気コメントを検出！（結果次第で三味線判定）`);
       });
 
       const newRaceId = `${targetSiteForInput}_${place}_${raceNum}`;
@@ -370,13 +388,7 @@
       const container = document.getElementById('raceTabsContainer');
       document.getElementById('pendingCountBadge').innerText = pendingRaces.length;
       container.innerHTML = '';
-      
-      if(pendingRaces.length === 0) {
-        document.getElementById('raceContentArea').classList.add('hidden');
-        currentSelectedRaceId = null;
-        updateDrawerTarget();
-        return;
-      }
+      if(pendingRaces.length === 0) return document.getElementById('raceContentArea').classList.add('hidden');
 
       const sorted = [...pendingRaces].sort((a,b) => {
         if(a.site !== b.site) return a.site.localeCompare(b.site);
@@ -385,38 +397,34 @@
 
       sorted.forEach(race => {
         const btn = document.createElement('button');
-        const placeName = race.place ? `${race.place}` : '';
-        btn.innerText = `[${race.site}] ${placeName}${race.raceNum}R`;
+        btn.innerText = `[${race.site}] ${race.place || ''}${race.raceNum}R`;
         const isSelected = currentSelectedRaceId === race.id;
-        
-        btn.className = isSelected
-          ? "px-3 py-1.5 bg-cyan-900 border border-cyan-500 text-cyan-300 font-bold rounded-lg text-[11px] shadow-sm"
-          : "px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-400 font-bold rounded-lg text-[11px] hover:bg-slate-700";
-        
+        btn.className = isSelected ? "px-3 py-1.5 bg-cyan-900 border border-cyan-500 text-cyan-300 font-bold rounded-lg text-[11px] shadow-sm" : "px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-400 font-bold rounded-lg text-[11px] hover:bg-slate-700";
         btn.onclick = () => showRace(race.id);
         container.appendChild(btn);
       });
-      
-      if(!currentSelectedRaceId || !pendingRaces.find(r => r.id === currentSelectedRaceId)) {
-        showRace(sorted[0].id);
-      }
+      if(!currentSelectedRaceId || !pendingRaces.find(r => r.id === currentSelectedRaceId)) showRace(sorted[0].id);
     }
 
-     function showRace(id) {
+    function showRace(id) {
       currentSelectedRaceId = id;
       const race = pendingRaces.find(r => r.id === id);
       if (!race) return;
 
-      const placeName = race.place ? `${race.place} ` : '';
-      document.getElementById('currentRaceBadge').innerText = `${race.site}枠 - ${placeName}${race.raceNum}R${race.isGirls ? ' (ガールズ)' : ''}`;
+      document.getElementById('currentRaceBadge').innerText = `${race.site}枠 - ${race.place || ''} ${race.raceNum}R${race.isGirls ? ' (ガールズ)' : ''}`;
       document.getElementById('lineInfo').innerText = race.isGirls ? 'ガールズケイリン (単騎戦)' : race.lineInfo;
 
-      document.getElementById('playersList').innerHTML = race.players.sort((a,b) => b.aiScore - a.aiScore).map(p => `
+      document.getElementById('playersList').innerHTML = race.players.sort((a,b) => b.aiScore - a.aiScore).map(p => {
+        let commentBadge = '';
+        if(p.commentState === 'strong') commentBadge = `<span class="ml-1 text-[8px] bg-red-900 text-red-200 px-1 rounded border border-red-700">強気</span>`;
+        if(p.commentState === 'weak') commentBadge = `<span class="ml-1 text-[8px] bg-blue-900 text-blue-200 px-1 rounded border border-blue-700">弱気</span>`;
+        
+        return `
         <div class="glass-panel p-3 rounded-xl flex justify-between items-center">
           <div class="flex items-center space-x-3">
             <div class="w-8 h-8 rounded-full flex items-center justify-center font-black text-sm car-${p.carNo}">${p.carNo}</div>
             <div>
-              <div class="font-bold text-slate-100 text-sm">${p.name} <span class="text-[9px] font-normal text-slate-400">(${p.pref})</span></div>
+              <div class="font-bold text-slate-100 text-sm">${p.name} <span class="text-[9px] font-normal text-slate-400">(${p.pref})</span> ${commentBadge}</div>
               <div class="text-[9px] text-slate-400 mt-0.5">
                 <span class="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-yellow-400 font-bold mr-1">印: ${p.stamp}</span>
                 ${p.isTanki ? '単騎' : `第${p.lIdx}L ${p.pos}`}
@@ -428,7 +436,7 @@
             <div class="text-lg font-black text-cyan-400 neon-text">${p.aiScore}</div>
           </div>
         </div>
-      `).join('');
+      `}).join('');
       
       const fList = document.getElementById('flagList');
       if (race.flags.length > 0) {
@@ -438,8 +446,7 @@
         document.getElementById('flagContainer').classList.add('hidden');
       }
       document.getElementById('raceContentArea').classList.remove('hidden');
-      renderPendingTabs(); 
-      updateDrawerTarget();
+      renderPendingTabs(); updateDrawerTarget();
     }
 
     function removePendingRace() {
@@ -447,85 +454,85 @@
       if(confirm('このストックを破棄しますか？')) {
         pendingRaces = pendingRaces.filter(r => r.id !== currentSelectedRaceId);
         localStorage.setItem('pendingRaces', JSON.stringify(pendingRaces));
-        currentSelectedRaceId = null;
-        renderPendingTabs();
+        currentSelectedRaceId = null; renderPendingTabs();
       }
     }
 
     function updateDrawerTarget() {
       const disp = document.getElementById('targetRaceDisplay');
       if(currentSelectedRaceId) {
-        const race = pendingRaces.find(r => r.id === currentSelectedRaceId);
-        const placeName = race.place ? `${race.place} ` : '';
-        disp.innerText = `${race.site}枠 - ${placeName}${race.raceNum}R`;
-      } else {
-        disp.innerText = "未選択";
-      }
+        const r = pendingRaces.find(r => r.id === currentSelectedRaceId);
+        disp.innerText = `${r.site}枠 - ${r.place || ''} ${r.raceNum}R`;
+      } else { disp.innerText = "未選択"; }
     }
 
-    // 💡 複数サイト分を一括で消化するロジック
     function consumeResultData() {
       if(!currentSelectedRaceId) return alert('対象のレースを選択してください。');
-      
       const r1 = parseInt(document.getElementById('res1').value);
       const r2 = parseInt(document.getElementById('res2').value);
       const r3 = parseInt(document.getElementById('res3').value);
       const pay3 = parseInt(document.getElementById('pay3').value) || 0;
-      
       if (!r1 || !r2 || !r3) return alert('着順を入力してください');
 
       const baseRace = pendingRaces.find(r => r.id === currentSelectedRaceId);
-      const basePlace = baseRace.place;
-      const baseRaceNum = baseRace.raceNum;
-
-      // 現在ストックされている中から、同じ開催地・同じレース番号のものを全て抽出（例：B枠、Y枠、N枠の岐阜3R）
-      const targetRaces = pendingRaces.filter(r => r.place === basePlace && r.raceNum === baseRaceNum);
-      
+      const targetRaces = pendingRaces.filter(r => r.place === baseRace.place && r.raceNum === baseRace.raceNum);
       const baseTime = Date.now();
       let addedSites = [];
 
-      // 該当する全サイトのデータを一括で統計に追加
       targetRaces.forEach((raceData, index) => {
-        const newId = baseTime + index; // IDが重複しないようにズラす
-        db.unshift({ 
-          id: newId, site: raceData.site, place: raceData.place || '', raceNum: raceData.raceNum,
-          r1, r2, r3, pay3, isMansha: pay3 >= 10000, players: raceData.players 
-        });
+        db.unshift({ id: baseTime + index, site: raceData.site, place: raceData.place || '', raceNum: raceData.raceNum, r1, r2, r3, pay3, isMansha: pay3 >= 10000, players: raceData.players });
         addedSites.push(raceData.site);
       });
       localStorage.setItem('bynDB', JSON.stringify(db));
 
-      // 同県先頭の評価は「レース自体に対する評価」なので、3サイト同時に消化しても1回分だけ記録する
       const lCar = document.getElementById('leaderCar').value;
       const lEval = document.getElementById('leaderEval').value;
       if (lCar && lEval) {
-        honestyDB.unshift({ id: baseTime, car: parseInt(lCar), eval: lEval });
+        const leaderPlayer = baseRace.players.find(p => p.carNo === parseInt(lCar));
+        honestyDB.unshift({ id: baseTime, name: leaderPlayer ? leaderPlayer.name : `車番${lCar}`, eval: lEval });
         localStorage.setItem('honestyDB', JSON.stringify(honestyDB));
       }
 
-      // 消化完了したレースをすべてストックから一括削除
-      pendingRaces = pendingRaces.filter(r => !(r.place === basePlace && r.raceNum === baseRaceNum));
+      // 💡 三味線＆口だけ番長の自動判定・記録 (1レースにつき1回だけ記録)
+      baseRace.players.forEach(p => {
+        if (!commentDB[p.name]) commentDB[p.name] = { shamisen: 0, bigmouth: 0 };
+        // 強気なのに3着以下 (1・2着を逃す)
+        if (p.commentState === 'strong' && (p.carNo !== r1 && p.carNo !== r2)) {
+          commentDB[p.name].bigmouth++;
+        }
+        // 弱気なのに1・2着に突っ込む
+        if (p.commentState === 'weak' && (p.carNo === r1 || p.carNo === r2)) {
+          commentDB[p.name].shamisen++;
+        }
+      });
+      localStorage.setItem('commentDB', JSON.stringify(commentDB));
+
+      pendingRaces = pendingRaces.filter(r => !(r.place === baseRace.place && r.raceNum === baseRace.raceNum));
       localStorage.setItem('pendingRaces', JSON.stringify(pendingRaces));
       currentSelectedRaceId = null;
       
-      // フォームのクリア
       ['res1','res2','res3','pay2','pay3','leaderCar'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('leaderEval').value = '';
       document.getElementById('resultDrawer').open = false;
-      
-      const pName = basePlace ? `${basePlace} ` : '';
-      const sitesStr = addedSites.join(', ');
-      alert(`[ ${pName}${baseRaceNum}R ] を ${sitesStr}枠まとめて消化し、統計に蓄積しました！`);
+      alert(`[ ${baseRace.place || ''} ${baseRace.raceNum}R ] を ${addedSites.join(', ')}枠まとめて消化しました！`);
       renderPendingTabs();
     }
 
     function deleteRecord(id) {
       if(confirm('このレースデータを統計から削除しますか？')) {
-        db = db.filter(d => d.id !== id);
-        honestyDB = honestyDB.filter(d => d.id !== id);
-        localStorage.setItem('bynDB', JSON.stringify(db));
-        localStorage.setItem('honestyDB', JSON.stringify(honestyDB));
-        renderAllDashboards();
+        db = db.filter(d => d.id !== id); localStorage.setItem('bynDB', JSON.stringify(db)); renderAllDashboards();
+      }
+    }
+
+    function deleteHonestyPlayer(name) {
+      if(confirm(`「${name}」の同県先頭評価をすべて削除しますか？`)) {
+        honestyDB = honestyDB.filter(d => (d.name || `車番${d.car}`) !== name); localStorage.setItem('honestyDB', JSON.stringify(honestyDB)); renderAllDashboards();
+      }
+    }
+
+    function deleteCommentPlayer(name) {
+      if(confirm(`「${name}」のコメント詐欺記録をリセットしますか？`)) {
+        delete commentDB[name]; localStorage.setItem('commentDB', JSON.stringify(commentDB)); renderAllDashboards();
       }
     }
 
@@ -533,94 +540,68 @@
       const backupObj = {
         bynDB: localStorage.getItem('bynDB') || '[]',
         honestyDB: localStorage.getItem('honestyDB') || '[]',
+        commentDB: localStorage.getItem('commentDB') || '{}',
         pendingRaces: localStorage.getItem('pendingRaces') || '[]'
       };
-      const jsonStr = JSON.stringify(backupObj);
-      const blob = new Blob([jsonStr], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const blob = new Blob([JSON.stringify(backupObj)], { type: "application/json" });
       const a = document.createElement("a");
-      a.href = url;
-      a.download = `byn_analyzer_backup_${date}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      a.href = URL.createObjectURL(blob); a.download = `byn_analyzer_backup_${new Date().toISOString().slice(0, 10).replace(/-/g, "")}.json`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
     }
 
-     function importData(event) {
+    function importData(event) {
       const file = event.target.files[0];
       if (!file) return;
       const reader = new FileReader();
       reader.onload = function(e) {
         try {
           const data = JSON.parse(e.target.result);
-          if (confirm('現在のデータは上書きされ、バックアップ状態に戻ります。よろしいですか？')) {
+          if (confirm('現在のデータを上書きし、バックアップを復元しますか？')) {
             if (data.bynDB) localStorage.setItem('bynDB', data.bynDB);
             if (data.honestyDB) localStorage.setItem('honestyDB', data.honestyDB);
+            if (data.commentDB) localStorage.setItem('commentDB', data.commentDB);
             if (data.pendingRaces) localStorage.setItem('pendingRaces', data.pendingRaces);
-            alert('データの復元が完了しました！再読み込みします。');
-            location.reload();
+            alert('データの復元が完了しました！'); location.reload();
           }
-        } catch (err) {
-          alert('ファイルの読み込みに失敗しました。');
-        }
+        } catch (err) { alert('ファイルの読み込みに失敗しました。'); }
         event.target.value = '';
       };
       reader.readAsText(file);
     }
 
     function renderAllDashboards() {
-      renderBYNStats();
-      renderMujirushiStats();
-      renderChart();
-      renderHonestyStats();
-      renderHistoryList();
+      renderBYNStats(); renderMujirushiStats(); renderChart(); renderHonestyStats(); renderCommentStats(); renderHistoryList();
     }
 
     function renderHistoryList() {
       const div = document.getElementById('historyList');
       if(db.length === 0) return div.innerHTML = '<p class="text-slate-500">保存履歴なし</p>';
-      
-      div.innerHTML = db.slice(0,10).map(d => {
-        const placeStr = d.place ? `${d.place}` : '';
-        return `
-          <div class="flex justify-between items-center bg-slate-800/50 p-2 rounded border border-slate-700">
-            <span class="text-cyan-400 font-bold">${d.site}枠 ${placeStr}${d.raceNum}R</span>
-            <span class="text-slate-300">結果: ${d.r1}-${d.r2}-${d.r3} / ${d.pay3}円</span>
-            <button onclick="deleteRecord(${d.id})" class="text-red-500 hover:text-red-300 font-bold px-2 py-0.5 border border-red-900 rounded bg-red-950/50">×</button>
-          </div>
-        `;
-      }).join('');
-    }
+      div.innerHTML = db.slice(0,10).map(d => `
+        <div class="flex justify-between items-center bg-slate-800/50 p-2 rounded border border-slate-700">
+          <span class="text-cyan-400 font-bold">${d.site}枠 ${d.place || ''}${d.raceNum}R</span>
+          <span class="text-slate-300">結果: ${d.r1}-${d.r2}-${d.r3} / ${d.pay3}円</span>
+          <button onclick="deleteRecord(${d.id})" class="text-red-500 hover:text-red-300 font-bold px-2 py-0.5 border border-red-900 rounded bg-red-950/50">×</button>
+        </div>
+      `).join('');
+              }
 
     function renderBYNStats() {
       const div = document.getElementById('bynStats');
       const stats = { B: { total:0, mansha:0, honmeiFly:0 }, Y: { total:0, mansha:0, honmeiFly:0 }, N: { total:0, mansha:0, honmeiFly:0 } };
-      
       db.forEach(d => {
         if(stats[d.site]) {
-          stats[d.site].total++;
-          if(d.isMansha) stats[d.site].mansha++;
+          stats[d.site].total++; if(d.isMansha) stats[d.site].mansha++;
           const honmeiP = d.players.find(p => p.stamp === '◎');
-          if(honmeiP) {
-            const hCar = Number(honmeiP.carNo);
-            if (Number(d.r1) !== hCar && Number(d.r2) !== hCar && Number(d.r3) !== hCar) {
-              stats[d.site].honmeiFly++;
-            }
-          }
+          if(honmeiP && ![Number(d.r1), Number(d.r2), Number(d.r3)].includes(Number(honmeiP.carNo))) stats[d.site].honmeiFly++;
         }
       });
-
-     div.innerHTML = ['B','Y','N'].map(s => {
+      div.innerHTML = ['B','Y','N'].map(s => {
         const st = stats[s];
-        const mRate = st.total ? Math.round((st.mansha/st.total)*100) : 0;
-        const fRate = st.total ? Math.round((st.honmeiFly/st.total)*100) : 0;
         return `
           <div class="flex justify-between items-center bg-slate-800/50 p-2.5 rounded border border-slate-700">
             <div class="w-6 h-6 rounded flex items-center justify-center font-bold text-xs bg-slate-700 text-cyan-400">${s}</div>
-            <div class="text-center"><div class="text-[9px] text-slate-400">万車券</div><div class="text-sm font-bold text-red-400">${mRate}%</div></div>
-            <div class="text-center"><div class="text-[9px] text-slate-400">◎飛ぶ率</div><div class="text-sm font-bold text-yellow-400">${fRate}%</div></div>
+            <div class="text-center"><div class="text-[9px] text-slate-400">万車券</div><div class="text-sm font-bold text-red-400">${st.total?Math.round((st.mansha/st.total)*100):0}%</div></div>
+            <div class="text-center"><div class="text-[9px] text-slate-400">◎飛ぶ率</div><div class="text-sm font-bold text-yellow-400">${st.total?Math.round((st.honmeiFly/st.total)*100):0}%</div></div>
             <div class="text-right text-[9px] text-slate-500">データ<br>${st.total}件</div>
           </div>
         `;
@@ -630,9 +611,7 @@
     function renderMujirushiStats() {
       const div = document.getElementById('mujirushiStats');
       let html = ""; let count = 0;
-      
-      const mujirushiStamps = ['☆', '★', '⑳', '●', '▲', '✖', '無'];
-
+      const mujirushiStamps = ['☆', '★', '⑳', '●', '▲', '✖', 'T', '無'];
       db.forEach(d => {
         [d.r1, d.r2, d.r3].forEach((resCar, idx) => {
           const p = d.players.find(x => x.carNo === resCar);
@@ -640,29 +619,62 @@
             count++;
             const rank = idx + 1;
             const rankColor = rank === 1 ? 'text-yellow-500' : (rank === 2 ? 'text-slate-300' : 'text-orange-400');
-            const posDesc = p.isTanki ? '単騎' : `第${p.lIdx}Lの${p.pos}`;
-            const placeStr = d.place ? `${d.place}` : '';
-            
-            let frontStamp = "-";
-            if(p.fCar) { const fp = d.players.find(x => x.carNo === p.fCar); if(fp) frontStamp = fp.stamp; }
-            
+            const frontStamp = p.fCar ? (d.players.find(x => x.carNo === p.fCar)?.stamp || "-") : "-";
             html += `
               <div class="bg-slate-800/30 p-2 border-l-2 border-yellow-500 mb-1 flex justify-between items-center">
                 <div>
                   <span class="font-bold ${rankColor} mr-1">${rank}着</span>
-                  <span class="text-slate-300">${d.site}枠 ${placeStr}${d.raceNum}R</span>
+                  <span class="text-slate-300">${d.site}枠 ${d.place || ''}${d.raceNum}R</span>
                   <span class="ml-1 px-1.5 py-0.5 bg-slate-900 text-yellow-400 rounded text-[10px] font-bold">${p.stamp}</span>
                 </div>
                 <div class="text-right text-[9px]">
-                  <span class="bg-slate-900 px-1 py-0.5 rounded text-yellow-300">${posDesc}</span>
+                  <span class="bg-slate-900 px-1 py-0.5 rounded text-yellow-300">${p.isTanki ? '単騎' : `第${p.lIdx}Lの${p.pos}`}</span>
                   ${p.fCar ? `<br><span class="text-slate-500">前の印: ${frontStamp}</span>` : ''}
                 </div>
               </div>
             `;
           }
         });
-      });　
-     div.innerHTML = count > 0 ? html : '<p class="text-slate-500 p-2">まだ穴馬（☆★⑳●▲✖）のデータがありません。</p>';
+      });
+      div.innerHTML = count > 0 ? html : '<p class="text-slate-500 p-2">まだ穴馬（☆★⑳●▲✖T）のデータがありません。</p>';
+    }
+
+    // 💡 新設：コメント詐欺（三味線＆口だけ）の描画ロジック
+    function renderCommentStats() {
+      const div = document.getElementById('commentStats');
+      const badActors = Object.entries(commentDB).filter(([_, s]) => s.shamisen > 0 || s.bigmouth > 0);
+      if (badActors.length === 0) return div.innerHTML = '<p class="text-slate-500">まだ詐欺履歴はありません。</p>';
+      
+      div.innerHTML = badActors.sort((a, b) => (b[1].shamisen + b[1].bigmouth) - (a[1].shamisen + a[1].bigmouth)).map(([name, s]) => `
+        <div class="bg-slate-800/50 p-2.5 rounded flex justify-between items-center border border-slate-700">
+          <div class="font-bold text-[11px] text-pink-300 truncate w-24" title="${name}">${name}</div>
+          <div class="flex space-x-2 text-[10px]">
+            <div class="flex flex-col text-center"><span class="text-slate-500">三味線(連対)</span><span class="font-bold text-red-400">${s.shamisen} 回</span></div>
+            <div class="flex flex-col text-center"><span class="text-slate-500">口だけ(飛ぶ)</span><span class="font-bold text-blue-400">${s.bigmouth} 回</span></div>
+          </div>
+          <button onclick="deleteCommentPlayer('${name}')" class="text-pink-500 hover:text-pink-300 font-bold px-2 py-0.5 border border-pink-900 rounded bg-pink-950/50 text-[10px]">×</button>
+        </div>
+      `).join('');
+    }
+
+    function renderHonestyStats() {
+      const div = document.getElementById('honestyStats');
+      if (honestyDB.length === 0) return div.innerHTML = '<p class="text-slate-500">評価履歴なし</p>';
+      const counts = honestyDB.reduce((acc, curr) => {
+        const key = curr.name || `車番${curr.car}`;
+        if(!acc[key]) acc[key] = { good:0, normal:0, bad:0, perfect:0, total:0 };
+        acc[key][curr.eval]++; acc[key].total++; return acc;
+      }, {});
+      div.innerHTML = Object.entries(counts).map(([name, s]) => `
+        <div class="bg-slate-800/50 p-2.5 rounded flex justify-between items-center border border-slate-700">
+          <div class="font-bold text-[11px] text-slate-200 truncate w-24" title="${name}">${name}</div>
+          <div class="flex space-x-1 text-[9px]">
+            <span class="bg-blue-900 text-blue-200 px-1 rounded">決:${s.perfect}</span><span class="bg-green-900 text-green-200 px-1 rounded">共:${s.good}</span>
+            <span class="bg-yellow-900 text-yellow-200 px-1 rounded">独:${s.normal}</span><span class="bg-red-900 text-red-200 px-1 rounded">悪:${s.bad}</span>
+          </div>
+          <button onclick="deleteHonestyPlayer('${name}')" class="text-red-500 hover:text-red-300 font-bold px-2 py-0.5 border border-red-900 rounded bg-red-950/50 text-[10px]">×</button>
+        </div>
+      `).join('');
     }
 
     function renderChart() {
@@ -672,36 +684,13 @@
       const labels = reversedDb.map(d => `${d.site}${d.place ? d.place[0] : ''}${d.raceNum}R`);
       const data = reversedDb.map(d => d.pay3);
       const colors = reversedDb.map(d => d.isMansha ? '#ef4444' : '#06b6d4');
-
       Chart.defaults.color = '#94a3b8';
       chartInstance = new Chart(ctx, {
-        type: 'line',
-        data: { labels, datasets: [{ label: '3連単配当(円)', data, borderColor: '#334155', pointBackgroundColor: colors, pointRadius: 4, borderWidth: 2, stepped: true }] },
+        type: 'line', data: { labels, datasets: [{ label: '3連単配当(円)', data, borderColor: '#334155', pointBackgroundColor: colors, pointRadius: 4, borderWidth: 2, stepped: true }] },
         options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } }
       });
-    }
-
-    function renderHonestyStats() {
-      const div = document.getElementById('honestyStats');
-      if (honestyDB.length === 0) return div.innerHTML = '<p class="text-slate-500">評価履歴なし</p>';
-      
-      const counts = honestyDB.reduce((acc, curr) => {
-        if(!acc[curr.car]) acc[curr.car] = { good:0, normal:0, bad:0, perfect:0, total:0 };
-        acc[curr.car][curr.eval]++; acc[curr.car].total++; return acc;
-      }, {});
-
-      div.innerHTML = Object.entries(counts).map(([car, s]) => `
-        <div class="bg-slate-800/50 p-2.5 rounded flex justify-between items-center">
-          <div class="w-6 h-6 rounded-full flex justify-center items-center font-bold text-xs car-${car}">${car}</div>
-          <div class="flex space-x-1 text-[9px]">
-            <span class="bg-blue-900 text-blue-200 px-1 rounded">決:${s.perfect}</span>
-            <span class="bg-green-900 text-green-200 px-1 rounded">共:${s.good}</span>
-            <span class="bg-yellow-900 text-yellow-200 px-1 rounded">独:${s.normal}</span>
-            <span class="bg-red-900 text-red-200 px-1 rounded">最悪:${s.bad}</span>
-          </div>
-        </div>
-      `).join('');
     }
   </script>
 </body>
 </html>
+
