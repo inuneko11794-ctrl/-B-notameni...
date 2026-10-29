@@ -54,7 +54,8 @@
           </button>
         </div>
       </div>
-       <div class="pt-4">
+
+        <div class="pt-4">
         <h3 class="text-[10px] text-slate-400 font-bold tracking-widest mb-2 flex items-center">
           <span>⏳ 発走待ちリスト (未結果)</span>
           <span id="pendingCountBadge" class="ml-2 bg-slate-800 px-2 py-0.5 rounded-full text-cyan-400">0</span>
@@ -64,7 +65,6 @@
 
       <div id="raceContentArea" class="hidden space-y-4 mt-2 border-t border-slate-800 pt-4">
         <div class="glass-panel p-3 rounded-xl flex flex-col space-y-1 relative">
-          <button onclick="removePendingRace()" class="absolute top-2 right-2 text-slate-500 hover:text-red-400 text-[10px] bg-slate-900 px-2 py-1 rounded border border-slate-700">ストック破棄</button>
           <span class="text-[10px] text-cyan-400 font-bold tracking-widest flex items-center">
             <span>LINE PREDICTION</span>
             <span id="currentRaceBadge" class="ml-3 bg-cyan-900 text-cyan-300 px-2 py-0.5 rounded shadow-sm"></span>
@@ -124,7 +124,7 @@
     </div>
   </div>
 
-  <!-- 📝 右下常駐：結果入力ドロワー -->
+   <!-- 📝 右下常駐：結果入力ドロワー -->
   <div class="fixed bottom-3 right-3 left-3 z-50 max-w-md mx-auto pb-safe">
     <details id="resultDrawer" class="glass-panel rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] overflow-hidden transition-all group">
       <summary class="px-5 py-4 flex justify-between items-center cursor-pointer bg-slate-800/90 active:bg-slate-700 border-t border-slate-700">
@@ -187,7 +187,7 @@
     </details>
   </div>
 
-  <script>
+   <script>
     let pendingRaces = JSON.parse(localStorage.getItem('pendingRaces') || '[]'); 
     let db = JSON.parse(localStorage.getItem('bynDB') || '[]'); 
     let honestyDB = JSON.parse(localStorage.getItem('honestyDB') || '[]'); 
@@ -197,7 +197,6 @@
     let currentSelectedRaceId = null; 
     let chartInstance = null;
 
-    // 💡 強気・弱気 判定用キーワード辞書
     const wordsStrong = ['絶好調', '好調', '余裕', '自力', '先行基本', '気合', '自信', '上向き', '踏めている', '踏めてる', '動けている', '動けてる', '万全', '抜群', 'もがく', '逃げる'];
     const wordsWeak = ['重い', '重たい', '一息', '欠場明け', '復帰戦', '疲れ', '一杯', '離れた', 'イマイチ', '不調', '不安', 'ついていくだけ', '展開次第'];
 
@@ -263,8 +262,7 @@
         document.getElementById('inputText').value = ''; 
         renderPendingTabs();
         alert(`${targetSiteForInput}枠のレースを ${addedCount}件 ストックしました！`);
-      } else {
-        alert('レース情報が正しく読み取れませんでした。');
+      } else {alert('レース情報が正しく読み取れませんでした。');
       }
     }
 
@@ -282,18 +280,18 @@
       let actualLineCount = 0;
       
       if (lineInfo) {
-        const zenkakuToHankaku = (str) => str.replace(/[１-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/[①-⑨]/g, s => String.fromCharCode(s.charCodeAt(0) - 0x245F));
-        const normLine = zenkakuToHankaku(lineInfo);
-        
+        // 💡 1桁の数字だけを抜き出す最強のロジック
+        const rawGroups = lineInfo.match(/\[([^\]]+)\]/g);
         let groups = [];
-        const bracketMatch = normLine.match(/\[([0-9\s]+)\]/g);
-        if (bracketMatch) {
-          groups = bracketMatch.map(g => g.replace(/[\[\]]/g, '').trim().replace(/\s+/g, ''));
+        if (rawGroups) {
+          groups = rawGroups.map(g => g.replace(/[\[\]\s]/g, ''));
         } else {
-          groups = normLine.split(/[\s\/\+]+/).filter(s => /[1-9]/.test(s)).map(g => g.replace(/[^1-9]/g, ''));
+          const cleanLine = lineInfo.replace(/[１-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/[①-⑨]/g, s => String.fromCharCode(s.charCodeAt(0) - 0x245F));
+          groups = cleanLine.split(/[\s\/\+]+/).filter(s => /[1-9]/.test(s)).map(g => g.replace(/[^1-9]/g, ''));
         }
 
         groups.forEach((str) => {
+          // 💡 1文字ずつ分割して数値化（1〜9以外は勝手に弾かれる）
           const cars = str.split('').map(Number).filter(n => n >= 1 && n <= 9);
           if (cars.length === 0) return;
           const isTanki = cars.length === 1; 
@@ -308,7 +306,7 @@
         });
       }
 
-      const isGirls = (actualLineCount === 0);
+     const isGirls = (actualLineCount === 0);
 
       const rawPlayers = [];
       const blocks = text.split(/\[\d+\]/).slice(1);
@@ -337,7 +335,7 @@
         }
       });
 
-    rawPlayers.forEach(p => {
+      rawPlayers.forEach(p => {
         let finalStamp = p.stamp;
         if (finalStamp === '無' && !isGirls) {
           const beforeP = rawPlayers.find(x => x.carNo === p.fCar);
@@ -356,12 +354,12 @@
               else if (beforeP && (beforeP.stamp === '無' || beforeP.stamp === '☆')) finalStamp = '★'; 
               else finalStamp = '無'; 
             } else {
-              finalStamp = 'T'; // 男子単騎
+              finalStamp = 'T'; 
             }
           }
         }
-        
-        players.push({ ...p, stamp: finalStamp });
+
+                         players.push({ ...p, stamp: finalStamp });
 
         if (['☆','★','⑳','●','▲','✖','△','T'].includes(finalStamp) && p.aiScore >= 85) {
           flags.push(`【${p.carNo}番 ${p.name} (${finalStamp})】元AI低評価だが独自AIスコア上位！`);
@@ -384,23 +382,47 @@
     function renderPendingTabs() {
       const container = document.getElementById('raceTabsContainer');
       document.getElementById('pendingCountBadge').innerText = pendingRaces.length;
-      container.innerHTML = '';
-      if(pendingRaces.length === 0) return document.getElementById('raceContentArea').classList.add('hidden');
+      
+      if(pendingRaces.length === 0) {
+        container.innerHTML = '';
+        document.getElementById('raceContentArea').classList.add('hidden');
+        currentSelectedRaceId = null;
+        updateDrawerTarget();
+        return;
+      }
 
       const sorted = [...pendingRaces].sort((a,b) => {
         if(a.site !== b.site) return a.site.localeCompare(b.site);
         return parseInt(a.raceNum) - parseInt(b.raceNum);
       });
 
-      sorted.forEach(race => {
-        const btn = document.createElement('button');
-        btn.innerText = `[${race.site}] ${race.place || ''}${race.raceNum}R`;
+      container.innerHTML = sorted.map(race => {
         const isSelected = currentSelectedRaceId === race.id;
-        btn.className = isSelected ? "px-3 py-1.5 bg-cyan-900 border border-cyan-500 text-cyan-300 font-bold rounded-lg text-[11px] shadow-sm" : "px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-400 font-bold rounded-lg text-[11px] hover:bg-slate-700";
-        btn.onclick = () => showRace(race.id);
-        container.appendChild(btn);
-      });
-      if(!currentSelectedRaceId || !pendingRaces.find(r => r.id === currentSelectedRaceId)) showRace(sorted[0].id);
+        const bgClass = isSelected ? "bg-cyan-900 border-cyan-500 text-cyan-300" : "bg-slate-800 border-slate-700 text-slate-400";
+        return `
+          <div class="flex items-stretch border rounded-lg overflow-hidden text-[11px] font-bold ${bgClass} shadow-sm transition-colors">
+            <button onclick="showRace('${race.id}')" class="px-3 py-1.5 hover:bg-white/5 transition-colors">
+              [${race.site}] ${race.place || ''}${race.raceNum}R
+            </button>
+            <button onclick="deletePendingRace('${race.id}')" class="px-2 flex items-center justify-center border-l border-slate-700/50 text-slate-500 hover:text-red-400 hover:bg-red-950/30 transition-colors">
+              ×
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      if(!currentSelectedRaceId || !pendingRaces.find(r => r.id === currentSelectedRaceId)) {
+        showRace(sorted[0].id);
+      }
+                }
+
+     function deletePendingRace(id) {
+      if(confirm('このストックを破棄しますか？')) {
+        pendingRaces = pendingRaces.filter(r => r.id !== id);
+        localStorage.setItem('pendingRaces', JSON.stringify(pendingRaces));
+        if (currentSelectedRaceId === id) currentSelectedRaceId = null;
+        renderPendingTabs();
+      }
     }
 
     function showRace(id) {
@@ -415,8 +437,8 @@
         let commentBadge = '';
         if(p.commentState === 'strong') commentBadge = `<span class="ml-1 text-[8px] bg-red-900 text-red-200 px-1 rounded border border-red-700">強気</span>`;
         if(p.commentState === 'weak') commentBadge = `<span class="ml-1 text-[8px] bg-blue-900 text-blue-200 px-1 rounded border border-blue-700">弱気</span>`;
-
-                                                                                                               return `
+        
+        return `
         <div class="glass-panel p-3 rounded-xl flex justify-between items-center">
           <div class="flex items-center space-x-3">
             <div class="w-8 h-8 rounded-full flex items-center justify-center font-black text-sm car-${p.carNo}">${p.carNo}</div>
@@ -446,16 +468,7 @@
       renderPendingTabs(); updateDrawerTarget();
     }
 
-    function removePendingRace() {
-      if(!currentSelectedRaceId) return;
-      if(confirm('このストックを破棄しますか？')) {
-        pendingRaces = pendingRaces.filter(r => r.id !== currentSelectedRaceId);
-        localStorage.setItem('pendingRaces', JSON.stringify(pendingRaces));
-        currentSelectedRaceId = null; renderPendingTabs();
-      }
-    }
-
-    function updateDrawerTarget() {
+     function updateDrawerTarget() {
       const disp = document.getElementById('targetRaceDisplay');
       if(currentSelectedRaceId) {
         const r = pendingRaces.find(r => r.id === currentSelectedRaceId);
@@ -510,14 +523,15 @@
       document.getElementById('resultDrawer').open = false;
       alert(`[ ${baseRace.place || ''} ${baseRace.raceNum}R ] を ${addedSites.join(', ')}枠まとめて消化しました！`);
       renderPendingTabs();
-            }
+    }
+
     function deleteRecord(id) {
       if(confirm('このレースデータを統計から削除しますか？')) {
         db = db.filter(d => d.id !== id); localStorage.setItem('bynDB', JSON.stringify(db)); renderAllDashboards();
       }
     }
 
-    function deleteHonestyPlayer(name) {
+     function deleteHonestyPlayer(name) {
       if(confirm(`「${name}」の同県先頭評価をすべて削除しますか？`)) {
         honestyDB = honestyDB.filter(d => (d.name || `車番${d.car}`) !== name); localStorage.setItem('honestyDB', JSON.stringify(honestyDB)); renderAllDashboards();
       }
@@ -578,7 +592,7 @@
       `).join('');
     }
 
-    function renderBYNStats() {
+     function renderBYNStats() {
       const div = document.getElementById('bynStats');
       const stats = { B: { total:0, mansha:0, honmeiFly:0 }, Y: { total:0, mansha:0, honmeiFly:0 }, N: { total:0, mansha:0, honmeiFly:0 } };
       db.forEach(d => {
@@ -601,7 +615,6 @@
       }).join('');
     }
 
-    // 💡 穴車の表記修正 ＆ 行ごとの削除ボタン（×）追加
     function renderMujirushiStats() {
       const div = document.getElementById('mujirushiStats');
       let html = ""; let count = 0;
@@ -634,7 +647,7 @@
       div.innerHTML = count > 0 ? html : '<p class="text-slate-500 p-2">まだ穴車（☆★⑳●▲✖T）のデータがありません。</p>';
     }
 
-    function renderCommentStats() {
+     function renderCommentStats() {
       const div = document.getElementById('commentStats');
       const badActors = Object.entries(commentDB).filter(([_, s]) => s.shamisen > 0 || s.bigmouth > 0);
       if (badActors.length === 0) return div.innerHTML = '<p class="text-slate-500">まだ詐欺履歴はありません。</p>';
@@ -649,7 +662,7 @@
           <button onclick="deleteCommentPlayer('${name}')" class="text-pink-500 hover:text-pink-300 font-bold px-2 py-0.5 border border-pink-900 rounded bg-pink-950/50 text-[10px]">×</button>
         </div>
       `).join('');
-              }
+    }
 
     function renderHonestyStats() {
       const div = document.getElementById('honestyStats');
