@@ -41,10 +41,11 @@
       <div class="glass-panel p-3 rounded-xl border-blue-500/30 space-y-3">
         <div class="flex justify-between items-center px-1">
           <span class="text-[10px] text-cyan-400 font-bold tracking-widest">📝 レースを追加する</span>
+          <!-- 💡 ここを複数選択可能なトグルボタンに変更しました -->
           <div class="flex space-x-1">
-            <button onclick="selectTargetSite('B')" id="add-btn-B" class="px-3 py-1 text-[10px] font-bold bg-blue-900 text-blue-300 rounded border border-blue-500 transition-all">B 枠</button>
-            <button onclick="selectTargetSite('Y')" id="add-btn-Y" class="px-3 py-1 text-[10px] font-bold bg-slate-800 text-slate-500 rounded border border-slate-700 transition-all">Y 枠</button>
-            <button onclick="selectTargetSite('N')" id="add-btn-N" class="px-3 py-1 text-[10px] font-bold bg-slate-800 text-slate-500 rounded border border-slate-700 transition-all">N 枠</button>
+            <button onclick="toggleTargetSite('B')" id="add-btn-B" class="px-3 py-1 text-[10px] font-bold bg-blue-900 text-blue-300 rounded border border-blue-500 transition-all">B 枠</button>
+            <button onclick="toggleTargetSite('Y')" id="add-btn-Y" class="px-3 py-1 text-[10px] font-bold bg-slate-800 text-slate-500 rounded border border-slate-700 transition-all">Y 枠</button>
+            <button onclick="toggleTargetSite('N')" id="add-btn-N" class="px-3 py-1 text-[10px] font-bold bg-slate-800 text-slate-500 rounded border border-slate-700 transition-all">N 枠</button>
           </div>
         </div>
         <div class="relative">
@@ -55,7 +56,7 @@
         </div>
       </div>
 
-        <div class="pt-4">
+      <div class="pt-4">
         <h3 class="text-[10px] text-slate-400 font-bold tracking-widest mb-2 flex items-center">
           <span>⏳ 発走待ちリスト (未結果)</span>
           <span id="pendingCountBadge" class="ml-2 bg-slate-800 px-2 py-0.5 rounded-full text-cyan-400">0</span>
@@ -124,7 +125,7 @@
     </div>
   </div>
 
-   <!-- 📝 右下常駐：結果入力ドロワー -->
+  <!-- 📝 右下常駐：結果入力ドロワー -->
   <div class="fixed bottom-3 right-3 left-3 z-50 max-w-md mx-auto pb-safe">
     <details id="resultDrawer" class="glass-panel rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] overflow-hidden transition-all group">
       <summary class="px-5 py-4 flex justify-between items-center cursor-pointer bg-slate-800/90 active:bg-slate-700 border-t border-slate-700">
@@ -187,13 +188,14 @@
     </details>
   </div>
 
-   <script>
+  <script>
     let pendingRaces = JSON.parse(localStorage.getItem('pendingRaces') || '[]'); 
     let db = JSON.parse(localStorage.getItem('bynDB') || '[]'); 
     let honestyDB = JSON.parse(localStorage.getItem('honestyDB') || '[]'); 
     let commentDB = JSON.parse(localStorage.getItem('commentDB') || '{}'); 
     
-    let targetSiteForInput = 'B'; 
+    // 💡 単一選択から複数選択用の配列に変更（デフォルトはB枠）
+    let selectedSitesForInput = ['B']; 
     let currentSelectedRaceId = null; 
     let chartInstance = null;
 
@@ -201,6 +203,7 @@
     const wordsWeak = ['重い', '重たい', '一息', '欠場明け', '復帰戦', '疲れ', '一杯', '離れた', 'イマイチ', '不調', '不安', 'ついていくだけ', '展開次第'];
 
     renderPendingTabs();
+    updateSiteButtons(); // 💡 初期描画
 
     function switchMainTab(tab) {
       document.getElementById('view-parse').classList.toggle('hidden', tab !== 'parse');
@@ -217,10 +220,28 @@
       if (tab === 'dash') renderAllDashboards();
     }
 
-    function selectTargetSite(site) {
-      targetSiteForInput = site;
+    // 💡 トグルボタンの処理（複数選択・解除）
+    function toggleTargetSite(site) {
+      const index = selectedSitesForInput.indexOf(site);
+      if (index > -1) {
+        // すでに選択されている場合、外す（ただし最低1つは残す）
+        if (selectedSitesForInput.length > 1) {
+          selectedSitesForInput.splice(index, 1);
+        } else {
+          return; // 最後の1つは外せない
+        }
+      } else {
+        // 選択されていない場合、追加する
+        selectedSitesForInput.push(site);
+      }
+      updateSiteButtons();
+    }
+
+    // 💡 ボタンの見た目を更新
+    function updateSiteButtons() {
       ['B','Y','N'].forEach(s => {
-        document.getElementById(`add-btn-${s}`).className = (s === site)
+        const isSelected = selectedSitesForInput.includes(s);
+        document.getElementById(`add-btn-${s}`).className = isSelected
           ? `px-3 py-1 text-[10px] font-bold bg-blue-900 text-blue-300 rounded border border-blue-500 transition-all`
           : `px-3 py-1 text-[10px] font-bold bg-slate-800 text-slate-500 rounded border border-slate-700 transition-all`;
       });
@@ -236,9 +257,11 @@
       return '無';
     }
 
+    // 💡 複数サイト同時にストックする処理
     function stockRaceData() {
       const text = document.getElementById('inputText').value;
       if(!text) return alert('データを入力してください。');
+      if(selectedSitesForInput.length === 0) return alert('対象のサイト枠を1つ以上選択してください。');
 
       const placeMatch = text.match(/（\s*([^\s0-9]+)\s+\d+R\s*）/);
       const defaultPlace = placeMatch ? placeMatch[1] : "";
@@ -250,23 +273,38 @@
       sections.forEach(section => {
         const match = section.match(/（.+?\s(\d+)R）/);
         if (match) {
-          if (tempRaceNum) { processAndStoreRace(tempRaceNum, tempText, defaultPlace); addedCount++; }
+          if (tempRaceNum) { 
+            // 選択されたすべての枠に対してストック処理を実行
+            selectedSitesForInput.forEach(site => {
+              processAndStoreRace(tempRaceNum, tempText, defaultPlace, site); 
+              addedCount++;
+            });
+          }
           tempRaceNum = match[1]; tempText = section;
         } else {
           if (tempRaceNum) tempText += "\n" + section;
         }
       });
-      if (tempRaceNum) { processAndStoreRace(tempRaceNum, tempText, defaultPlace); addedCount++; }
+      if (tempRaceNum) { 
+        selectedSitesForInput.forEach(site => {
+          processAndStoreRace(tempRaceNum, tempText, defaultPlace, site); 
+          addedCount++;
+        });
+      }
 
       if(addedCount > 0) {
         document.getElementById('inputText').value = ''; 
         renderPendingTabs();
-        alert(`${targetSiteForInput}枠のレースを ${addedCount}件 ストックしました！`);
-      } else {alert('レース情報が正しく読み取れませんでした。');
+        // ストックした枠をアラートでお知らせ
+        const raceCount = addedCount / selectedSitesForInput.length;
+        alert(`選択された枠（${selectedSitesForInput.join(', ')}）に ${raceCount}レース を一括ストックしました！`);
+      } else {
+        alert('レース情報が正しく読み取れませんでした。');
       }
     }
 
-    function processAndStoreRace(raceNum, text, defaultPlace) {
+    // 💡 siteForThisRun 引数を追加して、ループに対応
+    function processAndStoreRace(raceNum, text, defaultPlace, siteForThisRun) {
       const players = [];
       const flags = [];
       
@@ -280,7 +318,6 @@
       let actualLineCount = 0;
       
       if (lineInfo) {
-        // 💡 1桁の数字だけを抜き出す最強のロジック
         const rawGroups = lineInfo.match(/\[([^\]]+)\]/g);
         let groups = [];
         if (rawGroups) {
@@ -291,7 +328,6 @@
         }
 
         groups.forEach((str) => {
-          // 💡 1文字ずつ分割して数値化（1〜9以外は勝手に弾かれる）
           const cars = str.split('').map(Number).filter(n => n >= 1 && n <= 9);
           if (cars.length === 0) return;
           const isTanki = cars.length === 1; 
@@ -306,7 +342,7 @@
         });
       }
 
-     const isGirls = (actualLineCount === 0);
+    const isGirls = (actualLineCount === 0);
 
       const rawPlayers = [];
       const blocks = text.split(/\[\d+\]/).slice(1);
@@ -331,7 +367,7 @@
           else if (wCount > sCount) commentState = 'weak';
           
           const posInfo = isGirls ? { lIdx: null, isTanki: true, pos: '単騎', fCar: null } : (lineMap[carNo] || { lIdx: null, isTanki: true, pos: '単騎', fCar: null });
-          rawPlayers.push({ carNo, name, pref: prefM?prefM[1].trim():"", aiScore, stamp, commentState, ...posInfo });
+          rawPlayers.push({ carNo, name, pref: prefM?prefM[1].trim():"", aiScore: parseFloat(aiScore), stamp, commentState, ...posInfo });
         }
       });
 
@@ -358,8 +394,8 @@
             }
           }
         }
-
-                         players.push({ ...p, stamp: finalStamp });
+        
+        players.push({ ...p, stamp: finalStamp, aiScore: p.aiScore.toFixed(2) });
 
         if (['☆','★','⑳','●','▲','✖','△','T'].includes(finalStamp) && p.aiScore >= 85) {
           flags.push(`【${p.carNo}番 ${p.name} (${finalStamp})】元AI低評価だが独自AIスコア上位！`);
@@ -369,8 +405,35 @@
         if(p.commentState === 'weak') flags.push(`💬 【${p.carNo}番 ${p.name}】弱気コメントを検出！（結果次第で三味線判定）`);
       });
 
-      const newRaceId = `${targetSiteForInput}_${place}_${raceNum}`;
-      const raceObj = { id: newRaceId, site: targetSiteForInput, place, raceNum, lineInfo, players, flags, isGirls };
+      const sortedByScore = [...players].sort((p1, p2) => p2.aiScore - p1.aiScore);
+      if (sortedByScore.length >= 3) {
+        const a = sortedByScore[0].carNo;
+        const b = sortedByScore[1].carNo;
+        const c = sortedByScore[2].carNo;
+        const product3 = a * b * c;
+        const s = [a, b, c].sort((x, y) => x - y);
+        const gap_large = s[2] - s[1];
+        
+        let isHigh2R = false;
+        let isHigh3R = false;
+
+        if (a === 1 && b >= 6 && Math.abs(a - c) <= 2) isHigh2R = true;
+        if (a === 6 && b === 1) isHigh2R = true;
+        if (a >= 2 && b >= 2 && product3 > 112.5 && (b - a) > -2.5) isHigh2R = true;
+
+        if (product3 > 112.5 && gap_large <= 1) isHigh3R = true;
+        if (product3 > 112.5 && gap_large >= 2 && b >= 5) isHigh3R = true;
+
+        if (isHigh3R) {
+          flags.push(`🔥 【万車券サイン点灯】AIスコア上位3車(${a} - ${b} - ${c})が「荒れる車番パターン」に完全合致！（外枠偏重など）`);
+        } else if (isHigh2R) {
+          flags.push(`⚠️ 【波乱サイン点灯】AIスコア上位3車(${a} - ${b} - ${c})が「2連単・高配当パターン」に合致！`);
+        }
+      }
+
+    // 💡 選択されたサイト枠でIDを生成
+      const newRaceId = `${siteForThisRun}_${place}_${raceNum}`;
+      const raceObj = { id: newRaceId, site: siteForThisRun, place, raceNum, lineInfo, players, flags, isGirls };
       
       const existIdx = pendingRaces.findIndex(r => r.id === newRaceId);
       if(existIdx > -1) pendingRaces[existIdx] = raceObj;
@@ -414,9 +477,9 @@
       if(!currentSelectedRaceId || !pendingRaces.find(r => r.id === currentSelectedRaceId)) {
         showRace(sorted[0].id);
       }
-                }
+    }
 
-     function deletePendingRace(id) {
+    function deletePendingRace(id) {
       if(confirm('このストックを破棄しますか？')) {
         pendingRaces = pendingRaces.filter(r => r.id !== id);
         localStorage.setItem('pendingRaces', JSON.stringify(pendingRaces));
@@ -456,7 +519,8 @@
           </div>
         </div>
       `}).join('');
-      
+
+    
       const fList = document.getElementById('flagList');
       if (race.flags.length > 0) {
         document.getElementById('flagContainer').classList.remove('hidden');
@@ -468,7 +532,7 @@
       renderPendingTabs(); updateDrawerTarget();
     }
 
-     function updateDrawerTarget() {
+    function updateDrawerTarget() {
       const disp = document.getElementById('targetRaceDisplay');
       if(currentSelectedRaceId) {
         const r = pendingRaces.find(r => r.id === currentSelectedRaceId);
@@ -485,6 +549,8 @@
       if (!r1 || !r2 || !r3) return alert('着順を入力してください');
 
       const baseRace = pendingRaces.find(r => r.id === currentSelectedRaceId);
+      
+      // 💡 同じ場所・同じレース番号のストックを一括で消化する
       const targetRaces = pendingRaces.filter(r => r.place === baseRace.place && r.raceNum === baseRace.raceNum);
       const baseTime = Date.now();
       let addedSites = [];
@@ -521,7 +587,7 @@
       ['res1','res2','res3','pay2','pay3','leaderCar'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('leaderEval').value = '';
       document.getElementById('resultDrawer').open = false;
-      alert(`[ ${baseRace.place || ''} ${baseRace.raceNum}R ] を ${addedSites.join(', ')}枠まとめて消化しました！`);
+      alert(`[ ${baseRace.place || ''} ${baseRace.raceNum}R ] を ${addedSites.join(', ')}枠 まとめて消化しました！`);
       renderPendingTabs();
     }
 
@@ -592,7 +658,7 @@
       `).join('');
     }
 
-     function renderBYNStats() {
+    function renderBYNStats() {
       const div = document.getElementById('bynStats');
       const stats = { B: { total:0, mansha:0, honmeiFly:0 }, Y: { total:0, mansha:0, honmeiFly:0 }, N: { total:0, mansha:0, honmeiFly:0 } };
       db.forEach(d => {
@@ -647,7 +713,7 @@
       div.innerHTML = count > 0 ? html : '<p class="text-slate-500 p-2">まだ穴車（☆★⑳●▲✖T）のデータがありません。</p>';
     }
 
-     function renderCommentStats() {
+    function renderCommentStats() {
       const div = document.getElementById('commentStats');
       const badActors = Object.entries(commentDB).filter(([_, s]) => s.shamisen > 0 || s.bigmouth > 0);
       if (badActors.length === 0) return div.innerHTML = '<p class="text-slate-500">まだ詐欺履歴はありません。</p>';
